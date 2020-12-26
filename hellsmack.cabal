@@ -65,7 +65,7 @@ executable hellsmack
     , with-utf8
     , semigroups
     , optparse-applicative
-    , gitrev
+    , githash
   mixins:
       base hiding (Prelude)
   other-modules:

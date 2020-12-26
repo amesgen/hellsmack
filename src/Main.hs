@@ -7,7 +7,7 @@ import Colourista.Pure qualified as C
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.Text.Lens
-import Development.GitRev
+import GitHash
 import HellSmack.Curse qualified as Curse
 import HellSmack.Curse.API qualified as Curse
 import HellSmack.Forge qualified as Forge
@@ -150,8 +150,13 @@ getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
     ver = OA.infoOption (toString verStr) do
       OA.short 'v' <> OA.long "version" <> OA.help "Print version"
       where
-        verStr = unwords $ [Meta.version, $(gitBranch), $(gitHash)] <> dirty
-        dirty = guard $(gitDirtyTracked) $> "(dirty)"
+        verStr =
+          unwords $
+            [ Meta.version,
+              toText $ giBranch Meta.git,
+              toText $ giHash Meta.git
+            ]
+              <> ["(dirty)" | giDirty Meta.git]
 
     subcommands = OA.subparser . foldMap simpleCommand
     simpleCommand (name, desc, opts) =

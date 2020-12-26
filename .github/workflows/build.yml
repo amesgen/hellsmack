@@ -7,13 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: alpine:latest
-      env:
-        STATIC_BUILD: HELLYEAH
-      volumes:
-        - ${{ github.workspace }}:/mnt
-      options: -w /mnt
     steps:
-      - uses: actions/checkout@v2
       - name: Setup
         # from https://github.com/utdemir/ghc-musl/blob/master/Dockerfile
         run: |
@@ -28,7 +22,8 @@ jobs:
             openssl-dev openssl-libs-static \
             xz xz-dev ncurses-static \
             bzip2 bzip2-dev bzip2-static \
-            zlib zlib-dev zlib-static
+            zlib zlib-dev zlib-static \
+            git
           curl --fail -o /bin/ghcup https://downloads.haskell.org/ghcup/$GHCUP/x86_64-linux-ghcup-$GHCUP
           chmod +x /bin/ghcup
           ghcup install ghc --set $GHC
@@ -39,8 +34,11 @@ jobs:
           GHCUP: '0.1.12'
           GHC: '8.10.3'
           CABAL: '3.2.0.0'
+      - uses: actions/checkout@v2
       - name: Build static binary
-        run: bash .github/workflows/build.sh
+        run: bash build.sh
+        env:
+          STATIC_BUILD: HELLYEAH
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

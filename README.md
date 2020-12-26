@@ -33,7 +33,7 @@ hellsmack --fish-completion-script /path/to/hellsmack
 
 Install suitable versions of GHC and Cabal (e.g. via [ghcup](https://gitlab.haskell.org/haskell/ghcup-hs/)) and run (optionally set `STATIC_BUILD`)
 ```bash
-bash .github/workflows/build.sh
+bash build.sh
 ```
 The output binary is in `artifacts`.
 

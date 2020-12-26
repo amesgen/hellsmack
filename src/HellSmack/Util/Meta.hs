@@ -3,6 +3,7 @@
 module HellSmack.Util.Meta
   ( name,
     version,
+    git,
     OS (..),
     os,
     Arch (..),
@@ -11,6 +12,7 @@ module HellSmack.Util.Meta
 where
 
 import Data.Version (showVersion)
+import GitHash
 import Paths_hellsmack qualified as P
 
 name :: Text
@@ -18,6 +20,9 @@ name = "hellsmack"
 
 version :: Text
 version = toText . showVersion $ P.version
+
+git :: GitInfo
+git = $$(tGitInfoCwd)
 
 data OS = Linux | Windows | OSX
   deriving stock (Show, Generic)

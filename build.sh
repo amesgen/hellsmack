@@ -17,11 +17,7 @@ ARTIFACTS_DIR=artifacts
 mkdir -p $ARTIFACTS_DIR
 BIN_PATH=$(find dist-newstyle -name 'hellsmack' -type f)
 if [ -z "$STATIC_BUILD" ]; then
-    UBUNTU_BIN_PATH=$ARTIFACTS_DIR/hellsmack-dynamic-ubuntu
-    ARCH_BIN_PATH=$ARTIFACTS_DIR/hellsmack-dynamic-arch
-    cp "$BIN_PATH" $UBUNTU_BIN_PATH
-    cp "$BIN_PATH" $ARCH_BIN_PATH
-    patchelf --replace-needed libpcre.so.3 libpcre.so.1 $ARCH_BIN_PATH
+    cp "$BIN_PATH" $ARTIFACTS_DIR/hellsmack-dynamic
 else
     STATIC_BIN_PATH=$ARTIFACTS_DIR/hellsmack-static
     cp "$BIN_PATH" $STATIC_BIN_PATH
