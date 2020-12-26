@@ -282,12 +282,11 @@ getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
                   [ ( "install",
                       "Install a CurseForge modpack by file ID",
                       do
+                        outDir <- outDirOpt
                         mcSide <- mcSideLike OA.argument do
                           OA.help "Download client or server modpack"
                         fileId <- OA.argument (Curse.AddonFileId <$> OA.auto) do
                           OA.metavar "FILE-ID" <> OA.help "Curse file ID of the modpack"
-                        outDir <- dirPath OA.argument do
-                          OA.metavar "OUT-DIR" <> OA.help "Output directory"
                         pure $ ModpackInstall Curse.ModpackInstallOptions {..}
                     ),
                     ( "search-install",

@@ -81,7 +81,7 @@ hellsmack curse modpacks search-install client "all the mods"
 
 Install a modpack (https://www.curseforge.com/minecraft/modpacks/all-the-mods-6/files/3145702) by file ID into the current directory:
 ```bash
-hellsmack curse modpacks install client 3145702 .
+hellsmack curse modpacks install client 3145702
 ```
 
 In each case, one can use `server` instead of `client` (if a server pack is available).
