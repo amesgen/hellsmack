@@ -1,0 +1,538 @@
+module HellSmack.Vanilla
+  ( -- * Types
+    MCVersion (..),
+    AllVersionsManifest (..),
+    LatestVersion (..),
+    Version (..),
+    VersionType (..),
+    VersionManifest (..),
+    Arguments (..),
+    Argument (..),
+    Rule (..),
+    FromJSON (..),
+    Action (..),
+    Property (..),
+    AssetIndex (..),
+    Download (..),
+    Library (..),
+    LibraryDownload (..),
+    OSName,
+    Extract (..),
+    Artifact (..),
+    Assets (..),
+    Asset (..),
+
+    -- * Utilities
+
+    -- ** Version manifests
+    allVersionsManifestPath,
+    getAllVersionsManifest,
+    getVersionManifest,
+
+    -- ** Assets
+    getAssetIndex,
+    downloadAssets,
+
+    -- ** Rules
+    doesPropertyApply,
+    processRules,
+
+    -- ** Artifacts
+    artifactPath,
+    processArtifacts,
+    downloadArtifacts,
+
+    -- ** Main JARs
+    mainJarPath,
+    downloadMainJar,
+
+    -- ** Arguments
+    classpathArg,
+    ProcessedArguments (..),
+    processArguments,
+
+    -- * Launch
+    launch,
+  )
+where
+
+import Codec.Archive.Zip
+import Conduit
+import Data.Aeson
+import Data.Aeson.Lens
+import Data.Map.Strict qualified as M
+import Data.Semigroup.Generic
+import Data.Text qualified as T
+import Data.Text.Lens
+import Data.Time
+import HellSmack.Logging
+import HellSmack.Util
+import HellSmack.Util.Meta qualified as Meta
+import HellSmack.Yggdrasil
+import Path.IO
+import Relude.Debug qualified as RU
+import Text.Regex.Pcre2
+import UnliftIO.Exception
+
+newtype MCVersion = MCVersion Text
+  deriving stock (Generic)
+  deriving newtype (Ord, Eq, FromJSON)
+  deriving (Show) via (ShowWithoutQuotes Text)
+
+data AllVersionsManifest = AllVersionsManifest
+  { latest :: LatestVersion,
+    versions :: [Version]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data LatestVersion = LatestVersion
+  { release :: MCVersion,
+    snapshot :: MCVersion
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data Version = Version
+  { id :: MCVersion,
+    versionType :: VersionType,
+    url :: Text,
+    time :: UTCTime,
+    releaseTime :: UTCTime
+  }
+  deriving stock (Show, Eq, Generic)
+
+instance FromJSON Version where
+  parseJSON =
+    genericParseJSON
+      defaultOptions
+        { fieldLabelModifier = \case
+            "versionType" -> "type"
+            l -> l
+        }
+
+data VersionType = Release | Snapshot | OldAlpha | OldBeta
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+
+instance FromJSON VersionType where
+  parseJSON =
+    parseJSON @Text >=> \case
+      "release" -> pure Release
+      "snapshot" -> pure Snapshot
+      "old_alpha" -> pure OldAlpha
+      "old_beta" -> pure OldBeta
+      vt -> fail [i|invalid version type: #{vt}|]
+
+data VersionManifest = VersionManifest
+  { arguments :: Maybe Arguments,
+    minecraftArguments :: Maybe Text,
+    assetIndex :: AssetIndex,
+    assets :: Text,
+    downloads :: Map Text Download,
+    id :: MCVersion,
+    libraries :: [Library],
+    -- logging :: Maybe Logging,
+    mainClass :: Text,
+    time :: UTCTime,
+    releaseTime :: UTCTime,
+    versionType :: VersionType
+  }
+  deriving stock (Show, Eq, Generic)
+
+instance FromJSON VersionManifest where
+  parseJSON =
+    genericParseJSON
+      defaultOptions
+        { fieldLabelModifier = \case
+            "versionType" -> "type"
+            l -> l
+        }
+
+data Arguments = Arguments
+  { game :: [Argument],
+    jvm :: [Argument]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (Semigroup, Monoid) via (GenericSemigroupMonoid Arguments)
+
+instance FromJSON Arguments where
+  parseJSON = withObject "Arguments" \v -> do
+    game <- v .:? "game" .!= []
+    jvm <- v .:? "jvm" .!= []
+    pure Arguments {..}
+
+data Argument = Argument
+  { value :: [Text],
+    rules :: [Rule]
+  }
+  deriving stock (Show, Eq, Generic)
+
+instance FromJSON Argument where
+  parseJSON v = s <|> c
+    where
+      s = parseJSON v <&> \t -> Argument {value = [t], rules = []}
+      c =
+        v & withObject "Argument" \v -> do
+          value <- (pure <$> v .: "value") <|> (v .: "value")
+          rules <- v .: "rules"
+          pure Argument {..}
+
+data Rule = Rule
+  { action :: Action,
+    properties :: [Property]
+  }
+  deriving stock (Show, Eq, Generic)
+
+instance FromJSON Rule where
+  parseJSON = withObject "Rule" \v -> do
+    action <- v .: actionKey
+    let properties =
+          Object v
+            ^.. do members . indices (/= actionKey) <.> members
+              . withIndex
+              . to do uncurry Property
+    pure Rule {..}
+    where
+      actionKey = "action"
+
+data Action = Allow | Disallow
+  deriving stock (Show, Eq, Generic, Enum, Bounded)
+
+instance FromJSON Action where
+  parseJSON =
+    parseJSON @Text >=> \case
+      "allow" -> pure Allow
+      "disallow" -> pure Disallow
+      a -> fail [i|invalid action: #{a}|]
+
+data Property = Property
+  { key :: (Text, Text),
+    value :: Value
+  }
+  deriving stock (Show, Eq, Generic)
+
+data AssetIndex = AssetIndex
+  { id :: Text,
+    sha1 :: Text,
+    size :: Word64,
+    totalSize :: Word64,
+    url :: Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data Download = Download
+  { sha1 :: Text,
+    size :: Word64,
+    url :: Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data Library = Library
+  { downloads :: LibraryDownload,
+    name :: MavenId,
+    natives :: Maybe (Map OSName Text),
+    extract :: Maybe Extract,
+    rules :: Maybe [Rule]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data LibraryDownload = LibraryDownload
+  { artifact :: Maybe Artifact,
+    classifiers :: Maybe (Map Text Artifact)
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+newtype OSName = OSName Text
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving newtype (FromJSON, FromJSONKey)
+
+newtype Extract = Extract
+  { exclude :: [FilePath]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data Artifact = Artifact
+  { path :: Path Rel File,
+    sha1 :: Maybe Text,
+    size :: Maybe Word64,
+    url :: Text
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+newtype Assets = Assets
+  { objects :: Map Text Asset
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+data Asset = Asset
+  { hash :: Text,
+    size :: Word64
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
+--
+
+allVersionsManifestUrl :: Text
+allVersionsManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+
+allVersionsManifestPath :: MRHas r DirConfig m => m (Path Abs File)
+allVersionsManifestPath =
+  siehs @DirConfig $ #manifestDir . to (</> [relfile|allVersionsManifest.json|])
+
+getAllVersionsManifest ::
+  (MonadIO m, MRHasAll r [DirConfig, Manager] m) => m AllVersionsManifest
+getAllVersionsManifest = do
+  path <- allVersionsManifestPath
+  downloadCachedJson allVersionsManifestUrl path Nothing
+
+getVersionManifest ::
+  (MonadIO m, MRHasAll r [DirConfig, Manager] m) =>
+  MCVersion ->
+  m VersionManifest
+getVersionManifest version = do
+  path <- allVersionsManifestPath
+  Version {url, id} <- downloadMaybeJson allVersionsManifestUrl path Nothing \avm ->
+    (avm :: AllVersionsManifest)
+      & findOf (#versions . each) (has $ #id . only version)
+      & maybeToRight [i|minecraft version '#{version}' not found|]
+  versionPath <- reThrow $ (</>) <$> siehs @DirConfig #manifestDir <*> parseRelFile [i|#{id}.json|]
+  let hashFromUrl = url ^? hashFromUrlR . _capture @"hash"
+  downloadCachedJson url versionPath hashFromUrl
+  where
+    hashFromUrlR = [_regex|https://launchermeta.mojang.com/v./packages/(?<hash>[[:alnum:]]{40})/|]
+
+getAssetIndex :: (MonadIO m, MRHasAll r [DirConfig, Manager] m) => VersionManifest -> m Assets
+getAssetIndex vm = do
+  let AssetIndex {id, url, sha1} = vm ^. #assetIndex
+  idFile <- reThrow . parseRelFile $ [i|#{id}.json|]
+  assetIndexPath <- siehs @DirConfig $ #assetDir . to (</> [reldir|indexes|] </> idFile)
+  downloadCachedJson url assetIndexPath (Just sha1)
+
+assetUrl :: Text
+assetUrl = "https://resources.download.minecraft.net"
+
+assetObjectsDir :: MRHas r DirConfig m => m (Path Abs Dir)
+assetObjectsDir = siehs @DirConfig #assetDir <&> (</> [reldir|objects|])
+
+downloadAssets ::
+  (MonadUnliftIO m, MRHasAll r [DirConfig, Manager, MCSide] m) =>
+  Assets ->
+  m ()
+downloadAssets Assets {objects} = do
+  baseDir <- assetObjectsDir
+  stepWise (withGenericProgress (length objects)) \step ->
+    forConcurrentlyNetwork_ objects \Asset {hash} -> step do
+      let hashs = toString hash
+          h2 = take 2 hashs
+          url = [i|#{assetUrl}/#{h2}/#{hash}|]
+      ((baseDir </>) -> path) <- reThrow $ (</>) <$> parseRelDir h2 <*> parseRelFile hashs
+      downloadHash url path (Just hash) HideProgress
+
+doesPropertyApply :: Property -> Bool
+doesPropertyApply Property {key, value} = case knownProperties ^? ix key of
+  Just applies -> applies value
+  Nothing -> RU.error [i|unknown property: #{key ^. _1}.#{key ^. _2}|]
+  where
+    knownProperties =
+      M.fromList
+        [ (("features", "is_demo_user"), has $ _Bool . only False),
+          (("features", "has_custom_resolution"), has $ _Bool . only False),
+          (("os", "name"), has $ _String . only currentOSName),
+          (("os", "arch"), has $ _String . only currentArchName),
+          (("os", "version"), const False) -- TODO windows 10?
+        ]
+
+currentOSName :: Text
+currentOSName = case Meta.os of
+  Meta.Linux -> "linux"
+  Meta.OSX -> "osx"
+  Meta.Windows -> "windows"
+
+currentArchName :: Text
+currentArchName = case Meta.arch of
+  Meta.X86 -> "x86"
+  Meta.X86_64 -> "amd64" -- NOTE confirm
+
+processRules :: [Rule] -> Action
+processRules rules
+  | null rules = Allow
+  | otherwise =
+    rules
+      & takeWhile (allOf (#properties . each) doesPropertyApply)
+      & preview _last
+      & maybe Disallow (view #action)
+
+type Artifacts = [(Artifact, Maybe (Extract, Path Abs Dir))]
+
+processArtifacts :: (MonadThrow m, MRHas r DirConfig m) => VersionManifest -> m Artifacts
+processArtifacts vm = do
+  nativeDir <- versionNativeDir vm
+  let validArtifact = (Allow ==) . processRules . toListOf do #rules . _Just . each
+      fromLib Library {..} = case downloads ^. #classifiers of
+        Just cls ->
+          natives
+            ^.. each
+              . ifolded
+              . index do OSName currentOSName
+              . to do \n -> cls ^? ix n <&> (,extract <&> (,nativeDir))
+              . each
+        Nothing -> downloads ^.. #artifact . each . to (,Nothing)
+  pure $ vm ^.. #libraries . each . filtered validArtifact . to fromLib . each
+
+versionNativeDir :: (MonadThrow m, MRHas r DirConfig m) => VersionManifest -> m (Path Abs Dir)
+versionNativeDir vm = do
+  nativeDir <- siehs @DirConfig #nativeDir
+  vmid <- parseRelDir $ vm ^. #id . _Unwrapped . unpacked
+  pure $ nativeDir </> vmid
+
+artifactPath :: (MRHas r DirConfig m) => Artifact -> m (Path Abs File)
+artifactPath Artifact {path} = siehs @DirConfig $ #libraryDir . to (</> path)
+
+downloadArtifacts ::
+  (MonadUnliftIO m, MRHasAll r [DirConfig, Manager, MCSide] m) =>
+  Artifacts ->
+  m ()
+downloadArtifacts afs = stepWise (withGenericProgress (length afs)) \step ->
+  forConcurrentlyNetwork_ afs \(a@Artifact {..}, ex) -> step do
+    fullPath <- artifactPath a
+    downloadHash url fullPath sha1 HideProgress
+    for_ ex \(Extract {..}, targetDir) -> do
+      withArchive (toFilePath fullPath) do
+        entries <-
+          getEntries <&> toListOf do
+            ifolded
+              . indices do \e -> exclude & all \ex -> not $ ex `isPrefixOf` unEntrySelector e
+              . asIndex
+        for_ entries \e -> do
+          extractPath <- (targetDir </>) <$> parseRelFile (unEntrySelector e)
+          ensureDir $ parent extractPath
+          unlessM (doesFileExist extractPath) $
+            saveEntry e (toFilePath extractPath)
+
+getMainDownload :: MRHas r MCSide m => VersionManifest -> m (Maybe Download)
+getMainDownload vm = mcSideName <&> \side -> vm ^. #downloads . at side
+
+mainJarPath ::
+  (MonadThrow m, MRHasAll r [DirConfig, MCSide] m) =>
+  VersionManifest ->
+  m (Path Abs File)
+mainJarPath vm = do
+  side <- mcSideName
+  versionDir <- siehs @DirConfig #versionDir
+  vmid <- parseRelDir $ vm ^. #id . _Unwrapped . unpacked
+  sideJar <- parseRelFile [i|#{side}.jar|]
+  pure $ versionDir </> vmid </> sideJar
+
+downloadMainJar ::
+  (MonadUnliftIO m, MRHasAll r [DirConfig, MCSide, Manager] m) => VersionManifest -> m ()
+downloadMainJar vm = whenJustM (getMainDownload vm) \Download {..} -> do
+  path <- reThrow $ mainJarPath vm
+  downloadHash url path (Just sha1) ShowProgress
+
+classpathArg ::
+  (MonadThrow m, MRHasAll r [DirConfig, MCSide] m) =>
+  VersionManifest ->
+  Artifacts ->
+  m String
+classpathArg vm artifacts = do
+  artifactPaths <- artifacts <&> fst & each %%~ artifactPath
+  maybeMainJarPath <-
+    getMainDownload vm >>= \case
+      Just _ -> pure <$> mainJarPath vm
+      _ -> pure []
+  pure . joinClasspath $ artifactPaths <> maybeMainJarPath
+
+data ProcessedArguments = ProcessedArguments
+  { game :: [String],
+    jvm :: [String]
+  }
+  deriving stock (Show, Generic)
+
+processArguments ::
+  (MonadIO m, MRHasAll r [DirConfig, MCSide, GameDir, MCAuth] m) =>
+  VersionManifest ->
+  String ->
+  m ProcessedArguments
+processArguments vm classpath = do
+  let VersionManifest {minecraftArguments = oldArgs, arguments = newArgs} = vm
+  uncurry ProcessedArguments . fold . catMaybes
+    <$> sequence [forM oldArgs processOldArgs, forM newArgs processNewArgs]
+  where
+    processNewArgs Arguments {game, jvm} =
+      (game, jvm) & each %%~ \args -> traverse replaceInputs do
+        Argument {value, rules} <- args
+        guard $ processRules rules == Allow
+        toString <$> value
+    processOldArgs args = do
+      game <- T.splitOn " " args <&> toString & traverse replaceInputs
+      natDir <- reThrow $ toFilePath <$> versionNativeDir vm
+      pure (game, ["-cp", classpath, [i|-Djava.library.path=#{natDir}|]])
+    replaceInputs =
+      packed . [_regex|\$\{(?<prop>[\S]+)\}|] %%~ \cap ->
+        cap & _capture @0 %%~ const case cap ^. _capture @"prop" of
+          "classpath" -> pure $ toText classpath
+          "natives_directory" -> fromPath $ versionNativeDir vm
+          "game_assets" -> fromPath assetObjectsDir
+          "assets_root" -> fromPath $ siehs @DirConfig #assetDir
+          "assets_index_name" -> pure $ vm ^. #assetIndex . #id
+          "game_directory" -> siehs @GameDir $ _Unwrapped . to toFilePath . packed
+          "auth_player_name" -> siehs @MCAuth #username
+          "auth_uuid" -> siehs @MCAuth #uuid
+          ((`elem` ["auth_access_token", "auth_session"]) -> True) ->
+            siehs @MCAuth $ #accessToken . _Unwrapped
+          ((`elem` ["version_name", "launcher_name"]) -> True) -> pure Meta.name
+          "launcher_version" -> pure Meta.version
+          "version_type" -> pure case vm ^. #versionType of
+            Release -> "release"
+            Snapshot -> "snapshot"
+            _ -> "unknown"
+          "user_type" -> pure "mojang" -- NOTE legacy?
+          "user_properties" -> pure "{}"
+          input -> throwString [i|invalid input '#{input}' in argument|]
+    fromPath = reThrow . fmap (toText . toFilePath)
+
+launch ::
+  ( MonadUnliftIO m,
+    MRHasAll
+      r
+      [ DirConfig,
+        MCSide,
+        Logger,
+        Manager,
+        GameDir,
+        MCAuth,
+        JavaConfig
+      ]
+      m
+  ) =>
+  VersionManifest ->
+  m ()
+launch vm =
+  sieh >>= \case
+    MCClient -> do
+      logInfo "downloading assets"
+      assets <- getAssetIndex vm
+      downloadAssets assets
+      artifacts <- reThrow $ processArtifacts vm
+      logInfo "downloading artifacts"
+      downloadArtifacts artifacts
+      logInfo "downloading main jar"
+      downloadMainJar vm
+      logInfo "preparing launch"
+      classpath <- reThrow $ classpathArg vm artifacts
+      ProcessedArguments {..} <- processArguments vm classpath
+      let mainClass = vm ^. #mainClass . unpacked
+      runMCJava $ jvm <> [mainClass] <> game
+    MCServer -> do
+      logInfo "downloading main jar"
+      downloadMainJar vm
+      mjp <- reThrow $ mainJarPath vm
+      runMCJava ["-jar", toFilePath mjp]
