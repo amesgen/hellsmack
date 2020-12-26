@@ -15,6 +15,18 @@ Some Minecraft stuff as a CLI:
     - update
  - Install CurseForge modpacks
 
+## ToC
+
+ * [hellsmack](#hellsmack)
+    * [Usage](#usage)
+       * [Launching](#launching)
+          * [Authentication](#authentication)
+       * [CurseForge](#curseforge)
+          * [Mods](#mods)
+          * [Modpacks](#modpacks)
+    * [Installation](#installation)
+    * [Building](#building)
+
 ## Usage
 
 ### Launching
