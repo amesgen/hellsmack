@@ -1,0 +1,37 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+jobs:
+  ormolu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: mrkkrp/ormolu-action@v1
+        with:
+          extra-args: -o-XTypeApplications -o-XPatternSynonyms -o-XBangPatterns -o-XImportQualifiedPost
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: '8.10.3'
+
+      - name: Freeze build
+        run: cabal freeze
+      - uses: actions/cache@v2
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: cabal-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: |
+            cabal-
+
+      - name: Build
+        run: cabal build -O0

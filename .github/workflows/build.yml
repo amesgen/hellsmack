@@ -1,0 +1,51 @@
+name: Build
+on:
+  release:
+    types: [published]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+      env:
+        STATIC_BUILD: HELLYEAH
+      volumes:
+        - ${{ github.workspace }}:/mnt
+      options: -w /mnt
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup
+        # from https://github.com/utdemir/ghc-musl/blob/master/Dockerfile
+        run: |
+          apk update
+          apk add \
+            gcc g++ bash git make xz tar binutils-gold \
+            perl curl file automake autoconf dpkg \
+            fakeroot findutils shadow
+          apk add \
+            gmp-dev ncurses-dev \
+            libffi libffi-dev \
+            openssl-dev openssl-libs-static \
+            xz xz-dev ncurses-static \
+            bzip2 bzip2-dev bzip2-static \
+            zlib zlib-dev zlib-static
+          curl --fail -o /bin/ghcup https://downloads.haskell.org/ghcup/$GHCUP/x86_64-linux-ghcup-$GHCUP
+          chmod +x /bin/ghcup
+          ghcup install ghc --set $GHC
+          ghcup install cabal --set $CABAL
+          echo "$GHCUP_INSTALL_BASE_PREFIX/.ghcup/bin" >> $GITHUB_PATH
+        env:
+          GHCUP_INSTALL_BASE_PREFIX: /usr/local
+          GHCUP: '0.1.12'
+          GHC: '8.10.3'
+          CABAL: '3.2.0.0'
+      - name: Build static binary
+        run: bash .github/workflows/build.sh
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: artifacts/hellsmack-static
+          asset_name: hellsmack-${{ runner.os }}
+          asset_content_type: application/octet-stream
