@@ -96,7 +96,7 @@ executable hellsmack
   ghc-options: -threaded -rtsopts
                -- -qn2: lower CPU usage
                "-with-rtsopts=-N -qn2"
-  if flag(use-openssl)
+  if flag(use-openssl) && !os(windows)
     build-depends: http-client-openssl >= 0.3.2
     cpp-options: -DUSE_OPENSSL
   else
