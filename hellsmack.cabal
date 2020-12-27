@@ -62,6 +62,7 @@ library
     , broadcast-chan-conduit >= 0.2
     , lens >= 5.0
     , generic-lens >= 2.0
+    , jrec >= 0.1
     , pcre2 >= 1.1
     , cryptohash-sha1 >= 0.11
     , base16 >= 0.3

@@ -17,6 +17,8 @@ import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Vanilla qualified as Vanilla
 import HellSmack.Yggdrasil
+import JRec ((:=) (..), pattern Rec)
+import JRec qualified as JR
 import Main.Utf8 (withUtf8)
 import Options.Applicative qualified as OA
 import Path.IO
@@ -25,24 +27,29 @@ import UnliftIO.Exception
 
 main :: IO ()
 main =
-  withUtf8 . displayErrors $ do
-    -- TODO use some open product thingy (cf. jrec branch)
-    getCLI >>= \CLI {..} -> do
+  withUtf8 . displayErrors $
+    getCLI >>= \CLI {..} -> usingReaderT (Rec ()) do
       dataDir <- maybe defaultDataDir makeSomeAbsolute dataDir
       ensureDir dataDir
       let authPath = dataDir </> [relfile|auth.json|]
           logger = simpleLogger verbosity
-      httpManager <- newTLSManager
-      case cmds of
+      mgr <- newTLSManager
+      magnifyRec (#mgr := mgr, #logger := logger) case cmds of
         Launch LaunchOptions {..} -> do
           dirConfig <- newDirConfig dataDir
           gameDir <- newGameDir =<< makeSomeAbsolute gameDir
           mcAuth <-
             if authenticate && mcSide == MCClient
-              then usingReaderT (httpManager, logger) $ loadMCAuth authPath
+              then loadMCAuth authPath
               else pure bogusMCAuth
-          let javaConfig = JavaConfig {..}
-          usingReaderT MCConfig {..} do
+          let mcConfig =
+                ( #dirConfig := dirConfig,
+                  #gameDir := gameDir,
+                  #mcSide := mcSide,
+                  #mcAuth := mcAuth,
+                  #javaConfig := JavaConfig {..}
+                )
+          magnifyRec mcConfig do
             sideName <- mcSideName
             case forgeVersion of
               Nothing -> do
@@ -53,11 +60,11 @@ main =
                 fv <- Forge.findForgeVersion mcVersion forgeVersion
                 logInfo $ [i|launching Minecraft Forge ${} ($sideName)|] $ inGreen fv
                 Forge.launch fv
-        Auth o -> usingReaderT (httpManager, logger) case o of
+        Auth o -> case o of
           Login LoginOptions {..} -> saveMCAuth authPath email password
           Logout -> invalidateMCAuth authPath
           Verify -> void $ loadMCAuth authPath
-        Curse o -> usingReaderT (httpManager, logger) case o of
+        Curse o -> case o of
           Modpacks o -> case o of
             ModpackInstall o ->
               Curse.downloadFullModpack o
@@ -73,6 +80,7 @@ main =
             ModDeduplicate o ->
               Curse.deduplicateMods o
   where
+    magnifyRec r = magnify $ to (`JR.append` Rec r)
     inGreen = C.formatWith [C.green] . show @Text
     displayErrors =
       catches
@@ -85,19 +93,8 @@ main =
           usingReaderT (simpleLogger LevelError) $ logError e
           exitFailure
 
-defaultDataDir :: IO (Path Abs Dir)
-defaultDataDir = parseRelDir (toString Meta.name) <&> Just >>= getXdgDir XdgCache
-
-data MCConfig = MCConfig
-  { dirConfig :: DirConfig,
-    gameDir :: GameDir,
-    mcSide :: MCSide,
-    mcAuth :: MCAuth,
-    httpManager :: Manager,
-    javaConfig :: JavaConfig,
-    logger :: Logger
-  }
-  deriving stock (Generic)
+defaultDataDir :: MonadIO m => m (Path Abs Dir)
+defaultDataDir = liftIO $ parseRelDir (toString Meta.name) <&> Just >>= getXdgDir XdgCache
 
 data CLI = CLI
   { dataDir :: Maybe (SomeBase Dir),
