@@ -17,15 +17,14 @@ Some Minecraft stuff as a CLI:
 
 ## ToC
 
- * [hellsmack](#hellsmack)
-    * [Usage](#usage)
-       * [Launching](#launching)
-          * [Authentication](#authentication)
-       * [CurseForge](#curseforge)
-          * [Mods](#mods)
-          * [Modpacks](#modpacks)
-    * [Installation](#installation)
-    * [Building](#building)
+ * [Usage](#usage)
+    * [Launching](#launching)
+       * [Authentication](#authentication)
+    * [CurseForge](#curseforge)
+       * [Mods](#mods)
+       * [Modpacks](#modpacks)
+ * [Installation](#installation)
+ * [Building](#building)
 
 ## Usage
 
@@ -100,7 +99,11 @@ In each case, one can use `server` instead of `client` (if a server pack is avai
 
 ## Installation
 
-Fully static binaries for Linux x86_64 can be found [here](https://github.com/amesgen/hellsmack/releases) ([Latest release](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Linux)).
+Pre-built binaries can be found on the [release page](https://github.com/amesgen/hellsmack/releases). In particular:
+
+ - [Linux x86_64 (fully static)](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Linux)
+ - [macOS x86_64](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-macOS)
+ - [Windows x86_64](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Windows)
 
 Bash/zsh/fish completions are also available, run one of
 ```bash
