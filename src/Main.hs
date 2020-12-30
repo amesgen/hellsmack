@@ -148,7 +148,7 @@ getArgs :: IO CLI
 getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
   where
     ver = OA.infoOption (toString verStr) do
-      OA.short 'v' <> OA.long "version" <> OA.help "Print version"
+      OA.short 'V' <> OA.long "version" <> OA.help "Print version"
       where
         verStr =
           unwords $
@@ -221,7 +221,7 @@ getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
           LevelInfo -> "info"
           LevelWarn -> "warn"
           LevelError -> "error"
-        do OA.long "verbosity" <> OA.value LevelInfo <> OA.help "Verbosity level"
+        do OA.short 'v' <> OA.long "verbosity" <> OA.value LevelInfo <> OA.help "Verbosity level"
       cmds <-
         subcommands
           [ ("launch", "Minecraft (Forge) launcher", launchOptions),
