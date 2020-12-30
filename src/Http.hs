@@ -1,9 +1,8 @@
 {-# LANGUAGE CPP #-}
 
-module Http (withHttpManager, Manager) where
+module Http (newTLSManager, Manager) where
 
-import Network.HTTP.Client hiding (withManager)
-import UnliftIO (MonadUnliftIO (..))
+import Network.HTTP.Client
 
 #if USE_OPENSSL
 import Network.HTTP.Client.OpenSSL
@@ -11,11 +10,12 @@ import Network.HTTP.Client.OpenSSL
 import Network.HTTP.Client.TLS
 #endif
 
-withHttpManager :: MonadUnliftIO m => (m Manager -> m a) -> m a
+newTLSManager :: MonadIO m => m Manager
 
 #if USE_OPENSSL
-withHttpManager cb = withRunInIO \toIO ->
-  withOpenSSL $ toIO $ cb $ newOpenSSLManager
+newTLSManager = liftIO do
+  withOpenSSL pass
+  newOpenSSLManager
 #else
-withHttpManager cb = cb newTlsManager
+newTLSManager = newTlsManager
 #endif

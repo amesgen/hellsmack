@@ -25,6 +25,7 @@ module HellSmack.Curse.API
     FingerprintMatch (..),
     SearchCriteria (..),
     AddonSortMethod (..),
+    Game (..),
 
     -- * Constants (mainly Minecraft-related)
     minecraftGameId,
@@ -53,6 +54,8 @@ module HellSmack.Curse.API
     getAddonFilesByAddonId,
     getAddonFilesByFileIds,
     getFingerprintMatches,
+    getGame,
+    getGames,
 
     -- * Fingerprinting
     fingerprintFile,
@@ -61,13 +64,12 @@ where
 
 import Conduit hiding (ReleaseType)
 import Data.Aeson
-import Data.Binary.Get
-import Data.Bits (shiftR)
 import Data.Conduit.Serialization.Binary
 import Data.Text qualified as T
 import Data.Time
 import HellSmack.Util
 import Network.HTTP.Client
+import System.Random (randomRIO)
 import UnliftIO.IO
 
 newtype AddonId = AddonId Int
@@ -242,7 +244,8 @@ instance FromJSON ReleaseType where
       _ -> fail "invalid ReleaseType"
 
 data CategorySection = CategorySection
-  { id :: CategorySectionId,
+  { id :: Int,
+    gameCategoryId :: CategorySectionId,
     name :: Text,
     gameId :: GameId,
     packageType :: PackageType
@@ -326,6 +329,17 @@ data AddonSortMethod
   | ByGameVersion
   deriving stock (Show, Eq, Generic)
 
+-- add missing stuff?
+data Game = Game
+  { id :: GameId,
+    name :: Text,
+    slug :: Text,
+    supportsAddons :: Bool,
+    categorySections :: [CategorySection]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
 minecraftGameId :: GameId
 minecraftGameId = GameId 432
 
@@ -368,18 +382,21 @@ sendJSON ::
   m a
 sendJSON url m qs mb =
   sieh >>= \manager -> liftIO do
+    ua <- replicateM 30 $ randomRIO ('a', 'z')
     req <-
       parseUrlThrow [i|#{baseUrl}/#{url}|]
         <&> do \req -> req {method = show m}
         <&> case mb of
           Just b -> \req -> req {requestBody = RequestBodyLBS . encode $ b}
           Nothing -> identity
-        <&> case m of
-          GET -> identity
-          POST -> \req ->
-            req {requestHeaders = ("Content-Type", "application/json") : requestHeaders req}
+        <&> addRequestHeaders do
+          ("User-Agent", encodeUtf8 ua) : case m of
+            GET -> []
+            POST -> [("Content-Type", "application/json")]
         <&> setQueryString do qs <&> second Just
     manager & httpLbs req <&> responseBody <&> eitherDecode' >>= rethrow
+  where
+    addRequestHeaders hs req = req {requestHeaders = hs ++ requestHeaders req}
 
 getJSON :: (HasManagerIO r m, FromJSON a) => Text -> m a
 getJSON url = sendJSON url GET [] (Nothing @())
@@ -426,36 +443,6 @@ getFingerprintMatches ::
   m FingerprintMatchResult
 getFingerprintMatches = postJSON [i|fingerprint|]
 
--- | MurmurHash2 (32bit)
-murmurhash ::
-  -- |  length
-  Word32 ->
-  -- |  seed
-  Word32 ->
-  Get Word32
-murmurhash !len' !seed = go len' (seed `xor` len')
-  where
-    go !len !h0
-      | len >= bs = do
-        k0 <- getWord32le
-        let !k1 = k0 * m
-            !k2 = k1 `xor` do k1 `shiftR` 24
-            !k3 = k2 * m
-            !h1 = h0 * m
-            !h2 = h1 `xor` k3
-        go (len - bs) h2
-      | otherwise = do
-        lbs <- getRemainingLazyByteString
-        let !k0 = runGet getWord32le $ lbs <> "\0\0\0\0"
-            !h1 = h0 `xor` k0
-            !h2 = if len == 0 then h1 else h1 * m
-            !h3 = h2 `xor` do h2 `shiftR` 13
-            !h4 = h3 * m
-            !h5 = h4 `xor` do h4 `shiftR` 15
-        pure h5
-    !bs = 4
-    !m = 0x5bd1e995
-
 fingerprintFile :: MonadIO m => Path Abs File -> m Fingerprint
 fingerprintFile fp = liftIO $ withBinaryFile (toFilePath fp) ReadMode \handle -> do
   let src = sourceHandle handle .| filterCE isNonWSChar
@@ -466,3 +453,15 @@ fingerprintFile fp = liftIO $ withBinaryFile (toFilePath fp) ReadMode \handle ->
     curseSeed = 1
     -- needed as Curse uses "whitespace normalization"™ to hash (non-text!) files
     isNonWSChar b = b /= 9 && b /= 10 && b /= 13 && b /= 32
+
+getGame :: (HasManagerIO r m) => GameId -> m Game
+getGame (GameId id) = getJSON [i|game/#{id}|]
+
+getGames ::
+  (HasManagerIO r m) =>
+  -- | supports addons?
+  Bool ->
+  m [Game]
+getGames supportsAddons = sendJSON [i|game|] GET [("supportsAddons", sa)] (Nothing @())
+  where
+    sa = if supportsAddons then "true" else "false"

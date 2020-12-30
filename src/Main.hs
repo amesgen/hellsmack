@@ -25,14 +25,14 @@ import UnliftIO.Exception
 
 main :: IO ()
 main =
-  withUtf8 . displayErrors $ withHttpManager \mkMgr ->
-    -- TODO use some open product thingy
+  withUtf8 . displayErrors $ do
+    -- TODO use some open product thingy (cf. jrec branch)
     getArgs >>= \CLI {..} -> do
       dataDir <- maybe defaultDataDir makeSomeAbsolute dataDir
       ensureDir dataDir
       let authPath = dataDir </> [relfile|auth.json|]
           logger = simpleLogger verbosity
-      httpManager <- mkMgr
+      httpManager <- newTLSManager
       case cmds of
         Launch LaunchOptions {..} -> do
           dirConfig <- newDirConfig dataDir

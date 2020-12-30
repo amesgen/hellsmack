@@ -33,5 +33,9 @@ jobs:
           restore-keys: |
             cabal-
 
+      - name: Build dependencies
+        run: cabal build --enable-tests --only-dependencies
       - name: Build
-        run: cabal build -O0
+        run: cabal build
+      - name: Run tests
+        run: cabal test --test-show-details=direct

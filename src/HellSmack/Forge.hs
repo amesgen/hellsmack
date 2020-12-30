@@ -1,5 +1,6 @@
 module HellSmack.Forge
   ( ForgeVersion (..),
+    isPre113,
     ForgeVersionQuery (..),
     allVersionsManifestPath,
     findForgeVersion,
