@@ -21,7 +21,7 @@ flag use-openssl
   manual: True
 
 common commons
-  default-extensions: AllowAmbiguousTypes ApplicativeDo BangPatterns BinaryLiterals BlockArguments ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies DerivingVia DuplicateRecordFields EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving ImportQualifiedPost InstanceSigs KindSignatures LambdaCase LiberalTypeSynonyms MultiParamTypeClasses MultiWayIf NamedFieldPuns NoStarIsType OverloadedLabels OverloadedStrings PackageImports PatternSynonyms PolyKinds QuantifiedConstraints QuasiQuotes RankNTypes RecordWildCards RoleAnnotations ScopedTypeVariables StandaloneDeriving StandaloneKindSignatures StrictData TemplateHaskell TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators UnliftedNewtypes ViewPatterns
+  default-extensions: AllowAmbiguousTypes ApplicativeDo BangPatterns BinaryLiterals BlockArguments ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies DerivingVia DuplicateRecordFields EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving ImportQualifiedPost InstanceSigs KindSignatures LambdaCase LiberalTypeSynonyms MultiParamTypeClasses MultiWayIf NamedFieldPuns NoStarIsType OverloadedLabels OverloadedStrings PackageImports PatternSynonyms PolyKinds QuantifiedConstraints QuasiQuotes RankNTypes RecordWildCards RoleAnnotations ScopedTypeVariables StandaloneDeriving StandaloneKindSignatures StrictData TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators UnliftedNewtypes ViewPatterns
   ghc-options: -Wall -Werror -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wmissing-deriving-strategies -Wunused-packages -Wwarn=unused-packages -fhide-source-paths -fno-warn-name-shadowing
   default-language: Haskell2010
 
@@ -74,7 +74,7 @@ library
     , with-utf8
     , semigroups
     , optparse-applicative
-    , githash
+    , gitrev
   if flag(use-openssl) && !os(windows)
     build-depends: http-client-openssl >= 0.3.2
     cpp-options: -DUSE_OPENSSL
@@ -100,7 +100,7 @@ library
       HellSmack.Util.Newtypes
       HellSmack.Util.Path
       HellSmack.Util.Terminal
-      Http
+      HellSmack.Http
       Main
   other-modules:
       Paths_hellsmack
@@ -142,13 +142,11 @@ test-suite tasty
       tasty
     , tasty-hunit
 
-    , bytestring
-    , binary
     , containers
     , path-io
     , unliftio
   other-modules:
       CurseTest
-      UtilTest
       ForgeTest
+      VanillaTest
       YggdrasilTest

@@ -1,5 +1,7 @@
 module HellSmack.Util.Download
-  ( -- * Sha1
+  ( -- * SHA1
+    SHA1 (unSHA1),
+    makeSHA1,
     checkSha1,
 
     -- * Downloads
@@ -24,8 +26,10 @@ import Control.Monad.Trans.Except
 import Crypto.Hash.SHA1 qualified as SHA1
 import Data.Aeson
 import Data.ByteString qualified as B
-import Data.ByteString.Base16
+import Data.ByteString.Base16 qualified as B
 import Data.List (lookup)
+import Data.Text qualified as T
+import Data.Text.Encoding.Base16 qualified as T
 import HellSmack.Util.Exception
 import HellSmack.Util.Has
 import HellSmack.Util.Terminal
@@ -35,16 +39,44 @@ import Path.IO
 import UnliftIO.Async
 import UnliftIO.IO.File
 
+-- $setup
+-- >>> import "hellsmack" Prelude
+
 type HasManagerIO r m = (MonadIO m, MRHas r Manager m)
 
-checkSha1 :: MonadIO m => Path Abs File -> (Text -> Bool) -> m (Either String ())
+newtype SHA1 = SHA1 {unSHA1 :: Text}
+  deriving stock (Show, Eq)
+  deriving newtype (ToJSON)
+
+instance FromJSON SHA1 where
+  parseJSON = parseJSON >=> makeSHA1
+
+-- $
+-- >>> makeSHA1' = makeSHA1 @Maybe
+-- >>> makeSHA1' "23e29655ca076534abc07bc0ad5f5c86c28f67a4"
+-- Just (SHA1 {unSHA1 = "23e29655ca076534abc07bc0ad5f5c86c28f67a4"})
+-- >>> makeSHA1' "23E29655CA076534ABC07BC0AD5F5C86C28F67A4"
+-- Just (SHA1 {unSHA1 = "23e29655ca076534abc07bc0ad5f5c86c28f67a4"})
+-- >>> makeSHA1' "23E29655CA076534ABC?07BC0AD5F5C86C28F67A"
+-- Nothing
+-- >>> makeSHA1' ""
+-- Nothing
+-- >>> makeSHA1' "23e29655ca076534abc07bc0ad5f5c86c28f67a45"
+-- Nothing
+
+makeSHA1 :: MonadFail m => Text -> m SHA1
+makeSHA1 = \case
+  h | T.isValidBase16 h && T.length h == 40 -> pure . SHA1 $ T.toLower h
+  h -> fail [i|not a SHA1 hex string: #{h}|]
+
+checkSha1 :: MonadIO m => Path Abs File -> (SHA1 -> Bool) -> m (Either String ())
 checkSha1 fp sha1Valid =
   doesFileExist fp >>= \case
     True -> do
       actualSha1 <- liftIO $ withBinaryFile (toFilePath fp) ReadMode \h -> runConduit do
         sourceHandleUnsafe h
           .| foldlC SHA1.update SHA1.init
-          <&> encodeBase16 . SHA1.finalize
+          <&> SHA1 . B.encodeBase16 . SHA1.finalize
       pure . unless (sha1Valid actualSha1) $
         Left [i|invalid hash for local file #{fp}|]
     False -> pure $ Left [i|file #{fp} does not exist|]
@@ -100,7 +132,7 @@ downloadMaybeHash ::
   -- | file path
   Path Abs File ->
   -- | SHA1 hash, if available
-  Maybe Text ->
+  Maybe SHA1 ->
   ProgressOption ->
   -- | validate file
   (Path Abs File -> m (Either String a)) ->
@@ -117,7 +149,7 @@ downloadHash ::
   -- | file path
   Path Abs File ->
   -- | SHA1 hash, if available
-  Maybe Text ->
+  Maybe SHA1 ->
   ProgressOption ->
   m ()
 downloadHash url path sha1 po =
@@ -130,7 +162,7 @@ downloadMaybeJson ::
   -- | file path
   Path Abs File ->
   -- | SHA1 hash, if available
-  Maybe Text ->
+  Maybe SHA1 ->
   -- | validate JSON
   (a -> Either String b) ->
   m b
@@ -146,7 +178,7 @@ downloadCachedJson ::
   -- | file path
   Path Abs File ->
   -- | SHA1 hash, if available
-  Maybe Text ->
+  Maybe SHA1 ->
   m a
 downloadCachedJson url path sha1 =
   downloadMaybeJson url path sha1 pure

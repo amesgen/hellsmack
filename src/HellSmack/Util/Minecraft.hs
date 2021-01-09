@@ -1,10 +1,11 @@
 module HellSmack.Util.Minecraft
   ( DirConfig (..),
     newDirConfig,
-    GameDir (getGameDir),
+    GameDir (unGameDir),
     newGameDir,
     MCSide (..),
     mcSideName,
+    MCVersion (..),
     MavenId (..),
     parseMavenId,
     mavenIdUrl,
@@ -21,11 +22,16 @@ import Data.Conduit.Process.Typed
 import Data.Text qualified as T
 import HellSmack.Logging
 import HellSmack.Util.Has
+import HellSmack.Util.Newtypes
 import Path.IO
 import System.Exit
 import System.FilePath (searchPathSeparator)
 import UnliftIO.Exception
 import UnliftIO.IO.File
+
+-- $setup
+-- >>> import "hellsmack" Prelude
+-- >>> import Test.Tasty.HUnit
 
 data DirConfig = DirConfig
   { assetDir :: Path Abs Dir,
@@ -66,8 +72,8 @@ newDirConfig fp = do
 
   pure DirConfig {..}
 
-newtype GameDir = GameDir {getGameDir :: Path Abs Dir}
-  deriving stock (Show, Generic)
+newtype GameDir = GameDir {unGameDir :: Path Abs Dir}
+  deriving stock (Show)
 
 newGameDir :: MonadIO m => Path Abs Dir -> m GameDir
 newGameDir = fmap coerce . ensureAbsDir
@@ -83,6 +89,36 @@ data MavenId = MavenId
 
 instance FromJSON MavenId where
   parseJSON = parseJSON >=> parseMavenId
+
+-- $
+-- >>> parseMavenId' = parseMavenId @(Either String)
+-- >>> mavenId groupId artifactId version = MavenId {classifier = Nothing, extension = Nothing, ..}
+--
+-- >>> :{
+-- do
+--   parseMavenId' "foo.bar:baz:1.1" @?= Right do
+--     mavenId "foo.bar" "baz" "1.1"
+--   parseMavenId' "baz.foo:bar:1.2-dev:test" @?= Right do
+--     mavenId "baz.foo" "bar" "1.2-dev" & #classifier ?~ "test"
+--   parseMavenId' "baz.foo:bar:1.2-dev@exe" @?= Right do
+--     mavenId "baz.foo" "bar" "1.2-dev" & #extension ?~ "exe"
+--   parseMavenId' "baz.foo:bar:1.3:test@exe" @?= Right do
+--     mavenId "baz.foo" "bar" "1.3" & #classifier ?~ "test" & #extension ?~ "exe"
+--   --
+--   parseMavenId "wtf" @?= Nothing
+--   parseMavenId "wtf:wtf" @?= Nothing
+--   parseMavenId "wtf:wtf:wtf:wtf:wtf" @?= Nothing
+--   parseMavenId "wtf:wtf@exe" @?= Nothing
+--   --
+--   Just [relfile|foo/bar/baz/1.1/baz-1.1.jar|] @=? mavenIdPath do
+--     mavenId "foo.bar" "baz" "1.1"
+--   Just [relfile|baz/foo/bar/1.2-dev/bar-1.2-dev-test.jar|] @=? mavenIdPath do
+--     mavenId "baz.foo" "bar" "1.2-dev" & #classifier ?~ "test"
+--   Just [relfile|baz/foo/bar/1.2-dev/bar-1.2-dev.exe|] @=? mavenIdPath do
+--     mavenId "baz.foo" "bar" "1.2-dev" & #extension ?~ "exe"
+--   Just [relfile|baz/foo/bar/1.3/bar-1.3-test.exe|] @=? mavenIdPath do
+--     mavenId "baz.foo" "bar" "1.3" & #classifier ?~ "test" & #extension ?~ "exe"
+-- :}
 
 parseMavenId :: MonadFail m => Text -> m MavenId
 parseMavenId mi = case T.breakOn extSep mi of
@@ -120,6 +156,11 @@ mcSideName =
     MCClient -> "client"
     MCServer -> "server"
 
+newtype MCVersion = MCVersion {unMCVersion :: Text}
+  deriving stock (Generic)
+  deriving newtype (Ord, Eq, FromJSON)
+  deriving (Show) via (ShowWithoutQuotes Text)
+
 joinClasspath :: [Path Abs File] -> String
 joinClasspath = fold . intersperse [searchPathSeparator] . fmap toFilePath
 
@@ -132,7 +173,7 @@ data JavaConfig = JavaConfig
 runMCJava :: (MonadIO m, MRHasAll r [JavaConfig, GameDir, Logger] m) => [String] -> m ()
 runMCJava jvmArgs = do
   JavaConfig {..} <- sieh
-  gdir <- sieh <&> toFilePath . getGameDir
+  gdir <- sieh <&> toFilePath . unGameDir
   let p = proc (fromSomeFile javaBin) (extraJvmArgs ++ jvmArgs) & setWorkingDir gdir
   logInfo "launching minecraft"
   logTrace [i|raw command: #{p}|]

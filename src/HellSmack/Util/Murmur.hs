@@ -6,6 +6,10 @@ where
 import Data.Binary.Get
 import Data.Bits (shiftR)
 
+-- $setup
+-- >>> import "hellsmack" Prelude
+-- >>> import Test.Tasty.HUnit
+
 -- | MurmurHash2 (32bit)
 murmurhash ::
   -- |  length
@@ -35,3 +39,22 @@ murmurhash !len' !seed = go len' (seed `xor` len')
         pure h5
     !bs = 4
     !m = 0x5bd1e995
+
+-- $
+-- >>> import Data.Binary.Get
+-- >>> import Data.ByteString.Lazy qualified as BL
+-- >>> mh bs seed = runGet (murmurhash (fromIntegral $ BL.length bs) seed) bs
+-- >>> :{
+-- do
+--   mh "" 0 @?= 0
+--   mh "a" 1 @?= 626045324
+--   mh "bb" 2 @?= 1692487918
+--   mh "ccc" 3 @?= 1021219781
+--   mh "dddd" 4 @?= 4155289461
+--   mh "eeeee" 5 @?= 2583669252
+--   mh "ffffff" 6 @?= 2512034341
+--   mh "ggggggg" 7 @?= 3016870013
+--   mh "hhhhhhhh" 8 @?= 3696140734
+--   mh "randomshit" 42 @?= 2946655983
+--   mh "aseofansepfansepfnaspebfsapebfapsbeapsebufapsefbpas" 420 @?= 682730836
+-- :}

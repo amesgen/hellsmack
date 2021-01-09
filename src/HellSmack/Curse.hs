@@ -47,7 +47,6 @@ import GHC.Conc (getNumCapabilities)
 import HellSmack.Curse.API
 import HellSmack.Logging
 import HellSmack.Util hiding (extension)
-import HellSmack.Vanilla (MCVersion (..))
 import Path.IO
 import Relude.Extra.Group
 import Text.Layout.Table qualified as TL

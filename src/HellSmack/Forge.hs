@@ -30,7 +30,7 @@ import UnliftIO (MonadUnliftIO)
 import UnliftIO.Exception
 import UnliftIO.IO
 
-newtype ForgeVersion = ForgeVersion Text
+newtype ForgeVersion = ForgeVersion {unForgeVersion :: Text}
   deriving stock (Generic)
   deriving newtype (Ord, Eq, FromJSON)
   deriving (Show) via (ShowWithoutQuotes Text)
@@ -81,7 +81,7 @@ instance FromJSON Library where
 data Pre113Library = Pre113Library
   { url :: Maybe Text,
     name :: MavenId,
-    checksums :: Maybe [Text],
+    checksums :: Maybe [SHA1],
     natives :: Maybe (Map V.OSName Text),
     extract :: Maybe V.Extract,
     rules :: Maybe [V.Rule],
@@ -181,7 +181,7 @@ getVersionManifest fv = do
             . ( #_Pre113Lib
                   %~ (filterByAId "forge" %~ #name . #classifier ?~ "universal")
                     . ( filterByAId "minecraftforge" %~ do
-                          #name %~ (#artifactId .~ "forge") . (#version .~ _Wrapped # fv)
+                          #name %~ (#artifactId .~ "forge") . (#version .~ unForgeVersion fv)
                       )
               )
   pure $ vm & #libraries %~ fixUrls
@@ -270,7 +270,7 @@ getLibraries vm = do
 mergeWithVanilla :: V.VersionManifest -> VersionManifest -> [V.Library] -> V.VersionManifest
 mergeWithVanilla vm VersionManifest {..} libs =
   vm
-    & #id . _Unwrapped .~ [i|forge-#{id}|]
+    & #id .~ V.MCVersion [i|forge-#{id}|]
     & #time .~ time
     & #releaseTime .~ releaseTime
     & #versionType .~ versionType
@@ -393,6 +393,7 @@ checkPreprocessingOutputs im expander = do
   let outputs = im ^@.. #processors . each . #outputs . _Just . ifolded & each . each %~ expander
   invalidPaths <-
     outputs & C.traverseMaybe \(fp, sha1) -> do
+      sha1 <- rethrow $ makeSHA1 sha1
       fp <- reThrow $ parseAbsFile $ toString fp
       checkSha1 fp (sha1 ==) <&> ($> fp) . leftToMaybe
   pure case invalidPaths of

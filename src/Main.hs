@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
@@ -7,16 +8,16 @@ import Colourista.Pure qualified as C
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.Text.Lens
-import GitHash
+import Development.GitRev
 import HellSmack.Curse qualified as Curse
 import HellSmack.Curse.API qualified as Curse
 import HellSmack.Forge qualified as Forge
+import HellSmack.Http
 import HellSmack.Logging
 import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Vanilla qualified as Vanilla
 import HellSmack.Yggdrasil
-import Http
 import Main.Utf8 (withUtf8)
 import Options.Applicative qualified as OA
 import Path.IO
@@ -150,13 +151,7 @@ getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
     ver = OA.infoOption (toString verStr) do
       OA.short 'V' <> OA.long "version" <> OA.help "Print version"
       where
-        verStr =
-          unwords $
-            [ Meta.version,
-              toText $ giBranch Meta.git,
-              toText $ giHash Meta.git
-            ]
-              <> ["(dirty)" | giDirty Meta.git]
+        verStr = unwords $ [Meta.version, $(gitBranch), $(gitHash)] <> ["(dirty)" | $(gitDirty)]
 
     subcommands = OA.subparser . foldMap simpleCommand
     simpleCommand (name, desc, opts) =
@@ -202,7 +197,7 @@ getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
       Vanilla.allVersionsManifestPath
       []
       \(avm :: Vanilla.AllVersionsManifest) ->
-        avm ^.. #versions . each . #id . _Unwrapped . unpacked
+        avm ^.. #versions . each . #id . to unMCVersion . unpacked
     forgeVersionCompleter = completerFromFile
       Forge.allVersionsManifestPath
       do forgeSpecialVersions ^.. each

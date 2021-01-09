@@ -1,5 +1,6 @@
 module HellSmack.Yggdrasil
-  ( MCAuth (..),
+  ( AccessToken (..),
+    MCAuth (..),
     bogusMCAuth,
     loadMCAuth,
     saveMCAuth,

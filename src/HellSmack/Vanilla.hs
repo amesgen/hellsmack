@@ -74,11 +74,6 @@ import Relude.Debug qualified as RU
 import Text.Regex.Pcre2
 import UnliftIO.Exception
 
-newtype MCVersion = MCVersion Text
-  deriving stock (Generic)
-  deriving newtype (Ord, Eq, FromJSON)
-  deriving (Show) via (ShowWithoutQuotes Text)
-
 data AllVersionsManifest = AllVersionsManifest
   { latest :: LatestVersion,
     versions :: [Version]
@@ -213,7 +208,7 @@ data Property = Property
 
 data AssetIndex = AssetIndex
   { id :: Text,
-    sha1 :: Text,
+    sha1 :: SHA1,
     size :: Word64,
     totalSize :: Word64,
     url :: Text
@@ -222,7 +217,7 @@ data AssetIndex = AssetIndex
   deriving anyclass (FromJSON)
 
 data Download = Download
-  { sha1 :: Text,
+  { sha1 :: SHA1,
     size :: Word64,
     url :: Text
   }
@@ -258,7 +253,7 @@ newtype Extract = Extract
 
 data Artifact = Artifact
   { path :: Path Rel File,
-    sha1 :: Maybe Text,
+    sha1 :: Maybe SHA1,
     size :: Maybe Word64,
     url :: Text
   }
@@ -272,7 +267,7 @@ newtype Assets = Assets
   deriving anyclass (FromJSON)
 
 data Asset = Asset
-  { hash :: Text,
+  { hash :: SHA1,
     size :: Word64
   }
   deriving stock (Show, Eq, Generic)
@@ -304,10 +299,10 @@ getVersionManifest version = do
       & findOf (#versions . each) (has $ #id . only version)
       & maybeToRight [i|minecraft version '#{version}' not found|]
   versionPath <- reThrow $ (</>) <$> siehs @DirConfig #manifestDir <*> parseRelFile [i|#{id}.json|]
-  let hashFromUrl = url ^? hashFromUrlR . _capture @"hash"
+  let hashFromUrl = url & T.stripPrefix urlPrefix <&> T.takeWhile (/= '/') >>= makeSHA1
   downloadCachedJson url versionPath hashFromUrl
   where
-    hashFromUrlR = [_regex|https://launchermeta.mojang.com/v./packages/(?<hash>[[:alnum:]]{40})/|]
+    urlPrefix = "https://launchermeta.mojang.com/v1/packages/"
 
 getAssetIndex :: (MonadIO m, MRHasAll r [DirConfig, Manager] m) => VersionManifest -> m Assets
 getAssetIndex vm = do
@@ -330,9 +325,9 @@ downloadAssets Assets {objects} = do
   baseDir <- assetObjectsDir
   stepWise (withGenericProgress (length objects)) \step ->
     forConcurrentlyNetwork_ objects \Asset {hash} -> step do
-      let hashs = toString hash
+      let hashs = toString $ unSHA1 hash
           h2 = take 2 hashs
-          url = [i|#{assetUrl}/#{h2}/#{hash}|]
+          url = [i|#{assetUrl}/#{h2}/#{unSHA1 hash}|]
       ((baseDir </>) -> path) <- reThrow $ (</>) <$> parseRelDir h2 <*> parseRelFile hashs
       downloadHash url path (Just hash) HideProgress
 
@@ -390,7 +385,7 @@ processArtifacts vm = do
 versionNativeDir :: (MonadThrow m, MRHas r DirConfig m) => VersionManifest -> m (Path Abs Dir)
 versionNativeDir vm = do
   nativeDir <- siehs @DirConfig #nativeDir
-  vmid <- parseRelDir $ vm ^. #id . _Unwrapped . unpacked
+  vmid <- parseRelDir $ vm ^. #id . to unMCVersion . unpacked
   pure $ nativeDir </> vmid
 
 artifactPath :: (MRHas r DirConfig m) => Artifact -> m (Path Abs File)
@@ -427,7 +422,7 @@ mainJarPath ::
 mainJarPath vm = do
   side <- mcSideName
   versionDir <- siehs @DirConfig #versionDir
-  vmid <- parseRelDir $ vm ^. #id . _Unwrapped . unpacked
+  vmid <- parseRelDir $ vm ^. #id . to unMCVersion . unpacked
   sideJar <- parseRelFile [i|#{side}.jar|]
   pure $ versionDir </> vmid </> sideJar
 
@@ -483,11 +478,11 @@ processArguments vm classpath = do
           "game_assets" -> fromPath assetObjectsDir
           "assets_root" -> fromPath $ siehs @DirConfig #assetDir
           "assets_index_name" -> pure $ vm ^. #assetIndex . #id
-          "game_directory" -> siehs @GameDir $ _Unwrapped . to toFilePath . packed
+          "game_directory" -> fromPath $ siehs @GameDir $ to unGameDir
           "auth_player_name" -> siehs @MCAuth #username
           "auth_uuid" -> siehs @MCAuth #uuid
           ((`elem` ["auth_access_token", "auth_session"]) -> True) ->
-            siehs @MCAuth $ #accessToken . _Unwrapped
+            siehs @MCAuth $ #accessToken . to unAccessToken
           ((`elem` ["version_name", "launcher_name"]) -> True) -> pure Meta.name
           "launcher_version" -> pure Meta.version
           "version_type" -> pure case vm ^. #versionType of

@@ -23,6 +23,17 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: '8.10.3'
+      - name: Setup cabal-docspec
+        run: |
+          CABAL_DIR=~/.cabal/bin
+          echo "$CABAL_DIR" >> $GITHUB_PATH
+          DOCSPEC="$CABAL_DIR/cabal-docspec"
+          mkdir -p "$CABAL_DIR"
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-$CABAL_DOCSPEC_VERSION/cabal-docspec-$CABAL_DOCSPEC_VERSION.xz | xz -d > "$DOCSPEC"
+          chmod +x "$DOCSPEC"
+          "$DOCSPEC" --version
+        env:
+          CABAL_DOCSPEC_VERSION: "0.0.0.20210108"
 
       - name: Freeze build
         run: cabal freeze
@@ -39,3 +50,5 @@ jobs:
         run: cabal build
       - name: Run tests
         run: cabal test --test-show-details=direct
+      - name: Run cabal-docspec
+        run: ./docspec.sh

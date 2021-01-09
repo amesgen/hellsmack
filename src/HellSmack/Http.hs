@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 
-module Http (newTLSManager, Manager) where
+module HellSmack.Http (newTLSManager, Manager) where
 
 import Network.HTTP.Client
 
@@ -13,9 +13,7 @@ import Network.HTTP.Client.TLS
 newTLSManager :: MonadIO m => m Manager
 
 #if USE_OPENSSL
-newTLSManager = liftIO do
-  withOpenSSL pass
-  newOpenSSLManager
+newTLSManager = liftIO $ withOpenSSL newOpenSSLManager
 #else
 newTLSManager = newTlsManager
 #endif

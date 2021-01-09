@@ -33,7 +33,7 @@ data YggdrasilException = YggdrasilException
   deriving stock (Show, Generic)
   deriving anyclass (Exception, FromJSON)
 
-newtype AccessToken = AccessToken Text
+newtype AccessToken = AccessToken {unAccessToken :: Text}
   deriving stock (Show, Eq, Generic)
   deriving newtype (FromJSON, ToJSON)
 
