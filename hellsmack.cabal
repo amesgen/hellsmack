@@ -147,6 +147,5 @@ test-suite tasty
     , unliftio
   other-modules:
       CurseTest
-      ForgeTest
       VanillaTest
       YggdrasilTest
