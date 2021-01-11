@@ -33,7 +33,7 @@ jobs:
           chmod +x "$DOCSPEC"
           "$DOCSPEC" --version
         env:
-          CABAL_DOCSPEC_VERSION: "0.0.0.20210108"
+          CABAL_DOCSPEC_VERSION: '0.0.0.20210111'
 
       - name: Freeze build
         run: cabal freeze

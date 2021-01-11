@@ -18,11 +18,11 @@ cabal build exe:hellsmack $CABAL_OPTIONS --ghc-options="$GHC_OPTIONS"
 
 ARTIFACTS_DIR=artifacts
 mkdir -p $ARTIFACTS_DIR
-BIN_PATH=$(find dist-newstyle \( -name hellsmack -o -name hellsmack.exe \) -type f)
+BIN_PATH=$ARTIFACTS_DIR/hellsmack
+cp $(find dist-newstyle \( -name hellsmack -o -name hellsmack.exe \) -type f) $BIN_PATH
 if [ -z "$STATIC_BUILD" ]; then
-    cp "$BIN_PATH" $ARTIFACTS_DIR/hellsmack-dynamic
+    echo built dynamic binary
 else
-    STATIC_BIN_PATH=$ARTIFACTS_DIR/hellsmack-static
-    cp "$BIN_PATH" $STATIC_BIN_PATH
-    strip -s $STATIC_BIN_PATH
+    strip -s $BIN_PATH
+    echo built static binary
 fi
