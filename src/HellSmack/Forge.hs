@@ -10,7 +10,6 @@ module HellSmack.Forge
 where
 
 import Codec.Archive.Zip
-import Control.Compactable qualified as C
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.Aeson.Types (parseEither)
@@ -336,11 +335,11 @@ preprocess fv vvm im = do
         (bistrip "'" "'" -> Just v) -> pure $ Right v
         v -> pure $ Left v
   (excess, dataMap) <-
-    im ^@.. #dataEntries . ifolded
-      & C.traverseEither do
-        fmap (\(k, v) -> v & chosen %~ (k,)) . (_2 %%~ expandMavenIdsAndLiterals)
-          . (_2 %~ view case side of MCClient -> #client; MCServer -> #server)
-          . (_1 %~ \k -> "{" <> k <> "}")
+    forM (im ^@.. #dataEntries . ifolded) do
+      fmap (\(k, v) -> v & chosen %~ (k,)) . (_2 %%~ expandMavenIdsAndLiterals)
+        . (_2 %~ view case side of MCClient -> #client; MCServer -> #server)
+        . (_1 %~ \k -> "{" <> k <> "}")
+      <&> partitionEithers
       <&> each %~ M.fromList
   checkPreprocessingOutputs im (expandVia dataMap) >>= \case
     Right _ -> logInfo "forge already installed"
@@ -408,7 +407,7 @@ checkPreprocessingOutputs ::
 checkPreprocessingOutputs im expander = do
   let outputs = im ^@.. #processors . each . #outputs . _Just . ifolded & each . each %~ expander
   invalidPaths <-
-    outputs & C.traverseMaybe \(fp, sha1) -> do
+    catMaybes <$> forM outputs \(fp, sha1) -> do
       sha1 <- rethrow $ makeSHA1 sha1
       fp <- reThrow $ parseAbsFile $ toString fp
       checkSha1 fp (sha1 ==) <&> ($> fp) . leftToMaybe

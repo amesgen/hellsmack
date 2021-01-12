@@ -1,6 +1,4 @@
 packages: .
 
 with-compiler: ghc-8.10.3
-index-state: 2020-12-30T00:00:00Z
-
-allow-newer: compactable:base
+index-state: 2021-01-13T00:00:00Z

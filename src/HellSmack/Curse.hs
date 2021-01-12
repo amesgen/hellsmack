@@ -34,7 +34,6 @@ import BroadcastChan.Conduit qualified as BCC
 import Codec.Archive.Zip
 import Colourista.Pure qualified as C
 import Conduit hiding (ReleaseType)
-import Control.Compactable qualified as C
 import Data.Aeson
 import Data.List (isInfixOf)
 import Data.List.Lens
@@ -118,8 +117,9 @@ downloadFullModpack ModpackInstallOptions {..} = do
           \ModLoaderInfo {id} -> logInfo [i|mod loader: #{C.formatWith [C.bold] id}|]
 
         let (optionalFileIds, requiredFileIds) =
-              manifest ^. #files & C.fmapEither \f ->
-                (chosen %~ (^. #fileID)) . bool Left Right (f ^. #required) $ f
+              manifest ^. #files
+                <&> do \f -> (chosen %~ (^. #fileID)) . bool Left Right (f ^. #required) $ f
+                & partitionEithers
 
         logInfo [i|fetching metadata of #{length requiredFileIds} mods|]
         files <- getAddonFilesByFileIds requiredFileIds <&> (^.. each . folded)
@@ -289,9 +289,11 @@ findInCurseDB inputs = do
     M.fromList . (^.. #exactMatches . each . to ((^. #file . #packageFingerprint) &&& identity))
       <$> getFingerprintMatches (fst <$> fps)
   let result@(unknown, _) =
-        fps & C.fmapEither \(fp, path) -> case fpms ^? ix fp of
-          Just FingerprintMatch {..} -> Right (id, file, path)
-          Nothing -> Left path
+        fps <&> do
+          \(fp, path) -> case fpms ^? ix fp of
+            Just FingerprintMatch {..} -> Right (id, file, path)
+            Nothing -> Left path
+          & partitionEithers
   unless (null unknown) do
     logWarn [i|these #{length unknown} files are not present in the CurseForge mod database:|]
     for_ unknown \p -> logWarn [i| - #{p}|]
