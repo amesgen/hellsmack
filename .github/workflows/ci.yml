@@ -37,7 +37,7 @@ jobs:
 
       - name: Freeze build
         run: cabal freeze
-      - uses: actions/cache@v2
+      - uses: actions/cache@v2.1.4
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: cabal-${{ hashFiles('cabal.project.freeze') }}
