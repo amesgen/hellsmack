@@ -384,7 +384,7 @@ sendJSON url m qs mb =
   sieh >>= \manager -> liftIO do
     ua <- replicateM 30 $ randomRIO ('a', 'z')
     req <-
-      parseUrlThrow [i|#{baseUrl}/#{url}|]
+      parseUrlThrow [i|$baseUrl/$url|]
         <&> do \req -> req {method = show m}
         <&> case mb of
           Just b -> \req -> req {requestBody = RequestBodyLBS . encode $ b}
@@ -405,7 +405,7 @@ postJSON :: (HasManagerIO r m, FromJSON a, ToJSON b) => Text -> b -> m a
 postJSON url = sendJSON url POST [] . Just
 
 getAddon :: (HasManagerIO r m) => AddonId -> m Addon
-getAddon (AddonId aid) = getJSON [i|addon/#{aid}|]
+getAddon (AddonId aid) = getJSON [i|addon/${show aid}|]
 
 getAddons :: (HasManagerIO r m) => [AddonId] -> m [Addon]
 getAddons = \case
@@ -428,10 +428,10 @@ searchAddons SearchCriteria {..} = sendJSON [i|addon/search|] GET qs (Nothing @(
       ]
 
 getAddonFile :: (HasManagerIO r m) => AddonId -> AddonFileId -> m AddonFile
-getAddonFile (AddonId aid) (AddonFileId fid) = getJSON [i|addon/#{aid}/fid/#{fid}|]
+getAddonFile (AddonId aid) (AddonFileId fid) = getJSON [i|addon/${show aid}/fid/${show fid}|]
 
 getAddonFilesByAddonId :: (HasManagerIO r m) => AddonId -> m [AddonFile]
-getAddonFilesByAddonId (AddonId aid) = getJSON [i|addon/#{aid}/files|]
+getAddonFilesByAddonId (AddonId aid) = getJSON [i|addon/${show aid}/files|]
 
 getAddonFilesByFileIds ::
   (HasManagerIO r m) => [AddonFileId] -> m (Map AddonId (NonEmpty AddonFile))
@@ -455,7 +455,7 @@ fingerprintFile fp = liftIO $ withBinaryFile (toFilePath fp) ReadMode \handle ->
     isNonWSChar b = b /= 9 && b /= 10 && b /= 13 && b /= 32
 
 getGame :: (HasManagerIO r m) => GameId -> m Game
-getGame (GameId id) = getJSON [i|game/#{id}|]
+getGame (GameId id) = getJSON [i|game/${show id}|]
 
 getGames ::
   (HasManagerIO r m) =>

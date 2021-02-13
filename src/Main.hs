@@ -48,11 +48,11 @@ main =
             case forgeVersion of
               Nothing -> do
                 vm <- Vanilla.getVersionManifest mcVersion
-                logInfo [i|launching Minecraft #{inGreen mcVersion} (#{sideName})|]
+                logInfo $ [i|launching Minecraft ${} ($sideName)|] $ inGreen mcVersion
                 Vanilla.launch vm
               Just forgeVersion -> do
                 fv <- Forge.findForgeVersion mcVersion forgeVersion
-                logInfo [i|launching Minecraft Forge #{inGreen fv} (#{sideName})|]
+                logInfo $ [i|launching Minecraft Forge ${} ($sideName)|] $ inGreen fv
                 Forge.launch fv
         Auth o -> usingReaderT (httpManager, logger) case o of
           Login LoginOptions {..} -> saveMCAuth authPath email password
@@ -77,7 +77,7 @@ main =
     inGreen = C.formatWith [C.green] . show @Text
     displayErrors =
       catches
-        ?? [ Handler \(StringException msg cs) -> logAndExit [i|#{msg}\n#{prettyCallStack cs}|],
+        ?? [ Handler \(StringException msg cs) -> logAndExit $ toText $ msg <> "\n" <> prettyCallStack cs,
              Handler \(e :: ExitCode) -> throwIO e,
              Handler \(e :: SomeException) -> logAndExit . toText . displayException $ e
            ]

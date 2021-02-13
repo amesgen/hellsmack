@@ -125,7 +125,7 @@ parseMavenId mi = case T.breakOn extSep mi of
   ( parseRest -> Just (groupId, artifactId, version, classifier),
     T.stripPrefix extSep -> extension
     ) -> pure MavenId {..}
-  _ -> fail [i|invalid maven identifier: #{mi}|]
+  _ -> fail [i|invalid maven identifier: $mi|]
   where
     extSep = "@"
     parseRest =
@@ -139,7 +139,7 @@ mavenIdUrl MavenId {..} =
   let g = T.splitOn "." groupId
       c = maybe "" ("-" <>) classifier
       e = extension ?: "jar"
-   in T.intercalate "/" $ g <> [artifactId, version, [i|#{artifactId}-#{version}#{c}.#{e}|]]
+   in T.intercalate "/" $ g <> [artifactId, version, [i|$artifactId-$version$c.$e|]]
 
 mavenIdPath :: MonadThrow m => MavenId -> m (Path Rel File)
 mavenIdPath = parseRelFile . toString . mavenIdUrl
@@ -176,7 +176,7 @@ runMCJava jvmArgs = do
   gdir <- sieh <&> toFilePath . unGameDir
   let p = proc (fromSomeFile javaBin) (extraJvmArgs ++ jvmArgs) & setWorkingDir gdir
   logInfo "launching minecraft"
-  logTrace [i|raw command: #{p}|]
+  logTrace [i|raw command: ${show p}|]
   runProcess p >>= \case
     ExitSuccess -> logInfo "minecraft finished successfully"
     _ -> throwString "minecraft crashed :("

@@ -109,19 +109,19 @@ downloadFullModpack ModpackInstallOptions {..} = do
           es <- mkEntrySelector "manifest.json"
           getEntry es >>= rethrow . eitherDecode . toLazy
         let modpackVersion = C.formatWith [C.bold] $ manifest ^. #version
-            mcVersion = C.formatWith [C.bold] $ show $ manifest ^. #minecraft . #version
-        logInfo [i|modpack version: #{modpackVersion}, MC version: #{mcVersion :: Text}|]
+            mcVersion :: Text = C.formatWith [C.bold] $ show $ manifest ^. #minecraft . #version
+        logInfo [i|modpack version: $modpackVersion, MC version: $mcVersion|]
         forOf_
           do #minecraft . #modLoaders . each . filtered (view #primary)
           manifest
-          \ModLoaderInfo {id} -> logInfo [i|mod loader: #{C.formatWith [C.bold] id}|]
+          \ModLoaderInfo {id} -> logInfo $ [i|mod loader: ${}|] $ C.formatWith [C.bold] id
 
         let (optionalFileIds, requiredFileIds) =
               manifest ^. #files
                 <&> do \f -> (chosen %~ (^. #fileID)) . bool Left Right (f ^. #required) $ f
                 & partitionEithers
 
-        logInfo [i|fetching metadata of #{length requiredFileIds} mods|]
+        logInfo $ [i|fetching metadata of $show mods|] $ length requiredFileIds
         files <- getAddonFilesByFileIds requiredFileIds <&> (^.. each . folded)
 
         logInfo "downloading mods"
@@ -132,8 +132,8 @@ downloadFullModpack ModpackInstallOptions {..} = do
 
         whenNotNull optionalFileIds \_ -> do
           urls <- getAddonFilesByFileIds optionalFileIds <&> (^.. each . folded . #downloadUrl)
-          logInfo [i|optional mods available:|]
-          for_ urls \url -> logInfo [i| - #{url}|]
+          logInfo "optional mods available:"
+          for_ urls \url -> logInfo [i| - $url|]
 
         logInfo "extracting and copying other game files"
         extractFromZip metaFile (manifest ^. #overrides) outDir
@@ -174,7 +174,7 @@ withModpackMetadata mcSide afid cont = do
         pure (addon, file)
   let modpackName = C.formatWith [C.green, C.bold] $ addon ^. #name
       modpackFileName = C.formatWith [C.bold] $ file ^. #displayName
-  logInfo [i|found modpack #{modpackName}: #{modpackFileName}|]
+  logInfo [i|found modpack $modpackName: $modpackFileName|]
   logInfo $
     "downloading " <> case mcSide of
       MCClient -> "general metadata and non-mod files"
@@ -239,7 +239,8 @@ searchInstallModpack ModpackSearchInstallOptions {..} = do
             showReleaseType f
           ]
     whenJust file \AddonFile {id = fileId, displayName = modpackFileName} -> do
-      logInfo [i|selected #{C.formatWith [C.green, C.bold] modpackFileName}|]
+      let mfn = C.formatWith [C.green, C.bold] modpackFileName
+      logInfo [i|selected $mfn|]
       downloadFullModpack ModpackInstallOptions {..}
 
 extractFromZip :: MonadUnliftIO m => Path Abs File -> FilePath -> Path Abs Dir -> m ()
@@ -295,8 +296,8 @@ findInCurseDB inputs = do
             Nothing -> Left path
           & partitionEithers
   unless (null unknown) do
-    logWarn [i|these #{length unknown} files are not present in the CurseForge mod database:|]
-    for_ unknown \p -> logWarn [i| - #{p}|]
+    logWarn $ [i|these ${show} files are not present in the CurseForge mod database:|] $ length unknown
+    for_ unknown $ logWarn . [i| - ${}|] . toFilePath
   pure result
 
 data ModLoader = ForgeModLoader | FabricModLoader
@@ -321,7 +322,7 @@ updateMods ModUpdateOptions {..} = do
   outDir <- outDir & _Just %%~ makeSomeAbsolute
   (_, updatable) <- findInCurseDB inputs
   unless (null updatable) do
-    logInfo [i|fetching update info for #{length updatable} mods|]
+    logInfo $ [i|fetching update info for $show mods|] $ length updatable
     let isNewerFile file f =
           f ^. #fileDate > file ^. #fileDate
             && case mcVersion of
@@ -346,11 +347,11 @@ updateMods ModUpdateOptions {..} = do
       let addonName c a = C.formatWith c $ a ^. #name
           fileName c f = C.formatWith c $ f ^. #displayName
       case newerFiles of
-        Nothing -> logInfo [i|no updates for #{addonName [C.bold] addon}|]
+        Nothing -> logInfo $ [i|no updates for ${}|] $ addonName [C.bold] addon
         Just newerFiles -> do
-          logInfo
-            [iii|updating #{addonName [C.bold, C.green] addon}
-                     from #{fileName [C.bold] file}...|]
+          let an = addonName [C.bold, C.green] addon
+              fn = fileName [C.bold] file
+          logInfo [i|updating $an from $fn...|]
           newFile <- selectViaTable
             (pure file <> newerFiles)
             ["name", "release date", "type"]
@@ -364,7 +365,7 @@ updateMods ModUpdateOptions {..} = do
           if newFile ^. #id == file ^. #id
             then logInfo "staying on current version"
             else do
-              logInfo [i|updating to #{fileName [C.green, C.bold] newFile}|]
+              logInfo $ [i|updating to ${}|] $ fileName [C.green, C.bold] newFile
               downloadAddonFile newFile (outDir ?: parent path) ShowProgress
               unless keepOld $ removeFile path
   where
@@ -391,7 +392,7 @@ installMods ModsInstallOptions {..} = do
   whenNotNull
     do toList $ S.fromList fileIds S.\\ S.fromList (addonFiles ^.. each . to head . #id)
     \(coerce @_ @[Int] . toList -> unknownFileIds) ->
-      throwString [i|unknown file IDs: #{T.intercalate ", " $ show <$> unknownFileIds}|]
+      throwString $ [i|unknown file IDs: ${}|] $ T.intercalate ", " $ show <$> unknownFileIds
   addons <- getAddons (addonFiles ^.. ifolded . asIndex) <&> M.fromList . fmapToFst (^. #id)
   ensureDir outDir
   addonFiles <- forM (itoList addonFiles) \(aid, file :| _) -> do
@@ -407,7 +408,7 @@ installMods ModsInstallOptions {..} = do
             [ formattedVia (C.bold <> C.green) . toString $ addon ^. #name,
               formattedVia C.bold . toString $ file ^. #displayName
             ]
-  logInfo [i|downloading #{length addonFiles} mods|]
+  logInfo $ [i|downloading $show mods|] $ length addonFiles
   forConcurrentlyNetwork_ (addonFiles `zip` tableLines) \((_, file), line) -> do
     logInfo $ toText line
     downloadAddonFile file outDir HideProgress
@@ -455,7 +456,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
           TL.plain . show @_ @Int . round $ a ^. #downloadCount
         ]
   whenJust addon \a@Addon {name = addonName} -> do
-    logInfo [i|selected #{C.formatWith [C.green, C.bold] addonName}|]
+    logInfo $ [i|selected ${}|] $ C.formatWith [C.green, C.bold] addonName
     whenJustM (selectAddonFile a) \file -> do
       ensureDir outDir
       downloadAddonFile file outDir ShowProgress
@@ -464,7 +465,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
         logInfo [i|fetching dependency metadata|]
         deps <- findDeps requiredDependencyType file
         whenNotNull deps \deps -> do
-          logInfo [i|downloading #{length deps} dependencies|]
+          logInfo $ [i|downloading $show dependencies|] $ C.formatWith [C.green, C.bold] addonName
           stepWise (withGenericProgress (length deps)) \step ->
             forConcurrentlyNetwork_ deps \file ->
               step $ downloadAddonFile file outDir HideProgress
@@ -487,7 +488,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
               TL.plain . toString . showBytes' $ f ^. #fileLength
             ]
       whenJust file \AddonFile {displayName = modFileName} ->
-        logInfo [i|selected #{C.formatWith [C.green, C.bold] modFileName}|]
+        logInfo $ [i|selected ${}|] $ C.formatWith [C.green, C.bold] modFileName
       pure file
 
     findDeps dt =
@@ -500,8 +501,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
             depsAids = deps ^.. each . #addonId
         modify (<> S.fromList depsAids)
         getAddons depsAids <&> (deps `zip`) >>= foldMapM \(dep, addon) -> do
-          let addonName = C.formatWith [C.bold] $ addon ^. #name
-          logInfo [i|processing dependency #{addonName}|]
+          logInfo $ [i|processing dependency ${}|] $ C.formatWith [C.bold] $ addon ^. #name
           file <- case dep ^. #fileId of
             Just fileId -> Just <$> getAddonFile (dep ^. #addonId) fileId
             Nothing -> lift $ selectAddonFile addon
@@ -535,8 +535,8 @@ deduplicateMods ModDeduplicateOptions {..} = do
     & \case
       [] -> logInfo [i|no duplicated mods found|]
       toBeRemoved -> do
-        logInfo [i|removing #{length toBeRemoved} old mods:|]
-        for_ toBeRemoved \fp -> logInfo [i| - #{fp}|]
+        logInfo $ [i|removing $show old mods:|] $ length toBeRemoved
+        for_ toBeRemoved $ logInfo . [i| - ${}|] . toFilePath
         promptBool "remove" >>= \case
           True -> logInfo "removing old mods" *> for_ toBeRemoved removeFile
           False -> logInfo "keeping old mods"

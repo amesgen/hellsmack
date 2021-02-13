@@ -34,7 +34,7 @@ library
   ghc-options: -Wmissing-export-lists
 
   build-tool-depends:
-      autoexporter:autoexporter
+      autoexporter:autoexporter >= 1.1
   build-depends:
       relude >= 0.7
     , bytestring >= 0.10
@@ -50,10 +50,9 @@ library
     , http-client >= 0.7
     , network-uri >= 2.6
     , aeson >= 1.5
-    , aeson-qq >= 0.8
     , lens-aeson >= 1.1
     , time >= 1.9
-    , string-interpolate >= 0.3
+    , yasi >= 0.1
     , binary >= 0.8
     , exceptions >= 0.10
     , unliftio >= 0.2
@@ -136,7 +135,7 @@ test-suite tasty
   hs-source-dirs: test
   main-is: Driver.hs
   build-tool-depends:
-      tasty-discover:tasty-discover
+      tasty-discover:tasty-discover >= 4.2
   build-depends:
       tasty >= 1.4
     , tasty-hunit >= 0.10

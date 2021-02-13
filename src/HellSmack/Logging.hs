@@ -52,4 +52,4 @@ simpleLogger minLvl = Logger \lvl msg -> do
         LevelInfo -> ([C.green], "[INFO ]")
         LevelWarn -> ([C.yellow], "[WARN ]")
         LevelError -> ([C.red], "[ERROR]")
-  when (minLvl <= lvl) $ putTextLn [i|#{C.formatWith cs lvlTxt} #{msg}|]
+  when (minLvl <= lvl) $ putTextLn $ [i|${} $msg|] $ C.formatWith cs lvlTxt

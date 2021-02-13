@@ -116,7 +116,7 @@ instance FromJSON VersionType where
       "snapshot" -> pure Snapshot
       "old_alpha" -> pure OldAlpha
       "old_beta" -> pure OldBeta
-      vt -> fail [i|invalid version type: #{vt}|]
+      vt -> fail [i|invalid version type: $vt|]
 
 data VersionManifest = VersionManifest
   { arguments :: Maybe Arguments,
@@ -198,7 +198,7 @@ instance FromJSON Action where
     parseJSON @Text >=> \case
       "allow" -> pure Allow
       "disallow" -> pure Disallow
-      a -> fail [i|invalid action: #{a}|]
+      a -> fail [i|invalid action: $a|]
 
 data Property = Property
   { key :: (Text, Text),
@@ -297,8 +297,8 @@ getVersionManifest version = do
   Version {url, id} <- downloadMaybeJson allVersionsManifestUrl path Nothing \avm ->
     (avm :: AllVersionsManifest)
       & findOf (#versions . each) (has $ #id . only version)
-      & maybeToRight [i|minecraft version '#{version}' not found|]
-  versionPath <- reThrow $ (</>) <$> siehs @DirConfig #manifestDir <*> parseRelFile [i|#{id}.json|]
+      & maybeToRight [i|minecraft version '${show version}' not found|]
+  versionPath <- reThrow $ (</>) <$> siehs @DirConfig #manifestDir <*> parseRelFile [i|${show id}.json|]
   let hashFromUrl = url & T.stripPrefix urlPrefix <&> T.takeWhile (/= '/') >>= makeSHA1
   downloadCachedJson url versionPath hashFromUrl
   where
@@ -307,7 +307,7 @@ getVersionManifest version = do
 getAssetIndex :: (MonadIO m, MRHasAll r [DirConfig, Manager] m) => VersionManifest -> m Assets
 getAssetIndex vm = do
   let AssetIndex {id, url, sha1} = vm ^. #assetIndex
-  idFile <- reThrow . parseRelFile $ [i|#{id}.json|]
+  idFile <- reThrow . parseRelFile $ [i|${show id}.json|]
   assetIndexPath <- siehs @DirConfig $ #assetDir . to (</> [reldir|indexes|] </> idFile)
   downloadCachedJson url assetIndexPath (Just sha1)
 
@@ -327,14 +327,14 @@ downloadAssets Assets {objects} = do
     forConcurrentlyNetwork_ objects \Asset {hash} -> step do
       let hashs = toString $ unSHA1 hash
           h2 = take 2 hashs
-          url = [i|#{assetUrl}/#{h2}/#{unSHA1 hash}|]
+          url = [i|$assetUrl/$h2/${}|] $ unSHA1 hash
       ((baseDir </>) -> path) <- reThrow $ (</>) <$> parseRelDir h2 <*> parseRelFile hashs
       downloadHash url path (Just hash) HideProgress
 
 doesPropertyApply :: Property -> Bool
 doesPropertyApply Property {key, value} = case knownProperties ^? ix key of
   Just applies -> applies value
-  Nothing -> RU.error [i|unknown property: #{key ^. _1}.#{key ^. _2}|]
+  Nothing -> let (k, v) = key in RU.error [i|unknown property: $k.$v|]
   where
     knownProperties =
       M.fromList
@@ -423,7 +423,7 @@ mainJarPath vm = do
   side <- mcSideName
   versionDir <- siehs @DirConfig #versionDir
   vmid <- parseRelDir $ vm ^. #id . to unMCVersion . unpacked
-  sideJar <- parseRelFile [i|#{side}.jar|]
+  sideJar <- parseRelFile [i|$side.jar|]
   pure $ versionDir </> vmid </> sideJar
 
 downloadMainJar ::
@@ -469,7 +469,7 @@ processArguments vm classpath = do
     processOldArgs args = do
       game <- T.splitOn " " args <&> toString & traverse replaceInputs
       natDir <- reThrow $ toFilePath <$> versionNativeDir vm
-      pure (game, ["-cp", classpath, [i|-Djava.library.path=#{natDir}|]])
+      pure (game, ["-cp", classpath, [i|-Djava.library.path=$natDir|]])
     replaceInputs =
       packed . [_regex|\$\{(?<prop>[\S]+)\}|] %%~ \cap ->
         cap & _capture @0 %%~ const case cap ^. _capture @"prop" of
@@ -491,7 +491,7 @@ processArguments vm classpath = do
             _ -> "unknown"
           "user_type" -> pure "mojang" -- NOTE legacy?
           "user_properties" -> pure "{}"
-          input -> throwString [i|invalid input '#{input}' in argument|]
+          input -> throwString [i|invalid input '${input}' in argument|]
     fromPath = reThrow . fmap (toText . toFilePath)
 
 launch ::

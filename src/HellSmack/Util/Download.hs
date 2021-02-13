@@ -67,19 +67,20 @@ instance FromJSON SHA1 where
 makeSHA1 :: MonadFail m => Text -> m SHA1
 makeSHA1 = \case
   h | T.isValidBase16 h && T.length h == 40 -> pure . SHA1 $ T.toLower h
-  h -> fail [i|not a SHA1 hex string: #{h}|]
+  h -> fail [i|not a SHA1 hex string: $h|]
 
-checkSha1 :: MonadIO m => Path Abs File -> (SHA1 -> Bool) -> m (Either String ())
-checkSha1 fp sha1Valid =
+checkSha1 :: MonadIO m => Path Abs File -> Maybe SHA1 -> m (Either String ())
+checkSha1 fp sha1 =
   doesFileExist fp >>= \case
-    True -> do
-      actualSha1 <- liftIO $ withBinaryFile (toFilePath fp) ReadMode \h -> runConduit do
-        sourceHandleUnsafe h
-          .| foldlC SHA1.update SHA1.init
-          <&> SHA1 . B.encodeBase16 . SHA1.finalize
-      pure . unless (sha1Valid actualSha1) $
-        Left [i|invalid hash for local file #{fp}|]
-    False -> pure $ Left [i|file #{fp} does not exist|]
+    True -> case sha1 of
+      Just sha1 -> do
+        actualSha1 <- liftIO $ withBinaryFile (toFilePath fp) ReadMode \h -> runConduit do
+          sourceHandleUnsafe h
+            .| foldlC SHA1.update SHA1.init
+            <&> SHA1 . B.encodeBase16 . SHA1.finalize
+        pure $ unless (sha1 == actualSha1) $ Left [i|invalid hash for local file ${show fp}|]
+      Nothing -> pure pass
+    False -> pure $ Left [i|file ${show fp} does not exist|]
 
 downloadToFile ::
   HasManagerIO r m =>
@@ -139,7 +140,7 @@ downloadMaybeHash ::
   m a
 downloadMaybeHash url path sha1 po validate =
   downloadMaybe url path po \fp -> runExceptT do
-    ExceptT $ checkSha1 fp \actualSha1 -> sha1 & all (== actualSha1)
+    ExceptT $ checkSha1 fp sha1
     ExceptT $ validate fp
 
 downloadHash ::

@@ -17,7 +17,6 @@ module HellSmack.Yggdrasil.API
 where
 
 import Data.Aeson
-import Data.Aeson.QQ
 import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import Network.HTTP.Client
@@ -60,7 +59,7 @@ postJSON :: (MonadIO m, MRHas r Manager m, ToJSON a) => Text -> a -> m LByteStri
 postJSON url a = do
   req <-
     liftIO $
-      parseRequest [i|POST #{baseUrl}/#{url}|] <&> \req ->
+      parseRequest [i|POST $baseUrl/$url|] <&> \req ->
         req
           { requestHeaders = ("Content-Type", "application/json") : requestHeaders req,
             requestBody = RequestBodyLBS . encode $ a
@@ -86,28 +85,30 @@ authenticate ::
   Text ->
   m AuthResponse
 authenticate username password =
-  postJSON'
-    "authenticate"
-    [aesonQQ|{
-      agent: { name: "Minecraft", version: 1 },
-      username: #{username},
-      password: #{password},
-      clientToken: #{clientToken},
-      requestUser: false
-    }|]
+  postJSON' "authenticate" $
+    object
+      [ ("agent", object [("name", String "Minecraft"), ("version", Number 1)]),
+        ("username", String username),
+        ("password", String password),
+        ("clientToken", String clientToken),
+        ("requestUser", Bool False)
+      ]
 
 refresh :: (MonadIO m, MRHas r Manager m) => AccessToken -> m AuthResponse
-refresh at =
-  postJSON'
-    "refresh"
-    [aesonQQ|{ accessToken: #{at}, clientToken: #{clientToken}, requestUser: false }|]
+refresh (AccessToken at) =
+  postJSON' "refresh" $
+    object
+      [ ("accessToken", String at),
+        ("clientToken", String clientToken),
+        ("requestUser", Bool False)
+      ]
 
 data AccessTokenValidity = AccessTokenValid | AccessTokenInvalid
   deriving stock (Show, Eq, Generic, Enum, Bounded)
 
 validate :: (MonadUnliftIO m, MRHas r Manager m) => AccessToken -> m AccessTokenValidity
-validate at =
-  ( postJSON "validate" [aesonQQ|{ accessToken: #{at}, clientToken: #{clientToken} }|]
+validate (AccessToken at) =
+  ( postJSON "validate" (object [("accessToken", String at), ("clientToken", String clientToken)])
       $> AccessTokenValid
   )
     `catch` \e@YggdrasilException {..} ->
@@ -120,9 +121,11 @@ signout ::
   -- | password
   Text ->
   m ()
-signout username password = void do
-  postJSON "signout" [aesonQQ|{ username: #{username}, password: #{password} }|]
+signout username password =
+  void . postJSON "signout" $
+    object [("username", String username), ("password", String password)]
 
 invalidate :: (MonadIO m, MRHas r Manager m) => AccessToken -> m ()
-invalidate at = void do
-  postJSON "invalidate" [aesonQQ|{ accessToken: #{at}, clientToken: #{clientToken} }|]
+invalidate (AccessToken at) =
+  void . postJSON "invalidate" $
+    object [("accessToken", String at), ("clientToken", String clientToken)]

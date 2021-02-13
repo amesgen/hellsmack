@@ -72,5 +72,5 @@ invalidateMCAuth :: (MonadUnliftIO m, MRHasAll r [Manager, Logger] m) => Path Ab
 invalidateMCAuth authPath =
   whenM (doesFileExist authPath) do
     ar <- loadAuthResponse authPath
-    invalidate (ar ^. #accessToken) `catchAny` \e -> logDebug [i|invalidation failed: #{e}|]
+    invalidate (ar ^. #accessToken) `catchAny` do logDebug . [i|invalidation failed: $show|]
     removeFile authPath

@@ -68,7 +68,7 @@ promptVia txt validate =
 
 promptBool :: MonadIO m => Text -> m Bool
 promptBool txt =
-  promptVia [i|#{txt} (y/n): |] $
+  promptVia [i|$txt (y/n): |] $
     T.toLower >>> \case
       "y" -> pure $ Just True
       "n" -> pure $ Just False
@@ -119,7 +119,7 @@ withProgress showN' maxCount cb =
           Nothing -> 80
       countRef <- newIORef 0
       start <- currentTime
-      let printProgressBar unmask = forever do
+      let withProgressBar = withAsyncWithUnmask \unmask -> forever do
             count <- readIORef countRef
             diff <- diffAbsoluteTime <$> currentTime <*> pure start
             let p = round @Double $ fromIntegral count / fromIntegral maxCount * fromIntegral barLength
@@ -127,10 +127,10 @@ withProgress showN' maxCount cb =
                 bar = fW C.green (T.replicate p "#") <> fW C.blue (T.replicate (barLength - p) "-")
             putTextLn $ barTxt diff bar count
             unmask (threadDelay printTickMicros) `finally` clearLastLines 1
-      withAsyncWithUnmask printProgressBar \_ -> cb $ modifyIORef' countRef
+      withProgressBar \_ -> cb $ modifyIORef' countRef
     False -> cb $ const pass
   where
-    barTxt diff bar count = [i|[#{diffTxt}] #{bar} #{showN count} / #{showN maxCount}|]
+    barTxt diff bar count = [i|[$diffTxt] $bar ${} / ${}|] (showN count) (showN maxCount)
       where
         showN = showN' maxCount
         diffTxt = formatTime defaultTimeLocale "%02H:%02M:%02S" diff
