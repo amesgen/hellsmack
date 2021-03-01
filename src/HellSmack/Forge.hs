@@ -23,7 +23,6 @@ import HellSmack.Util
 import HellSmack.Vanilla qualified as V
 import HellSmack.Yggdrasil
 import Path.IO
-import System.Exit
 import System.IO.Temp
 import UnliftIO (MonadUnliftIO)
 import UnliftIO.Exception
@@ -357,8 +356,7 @@ preprocess fv vvm im = do
       V.downloadMainJar vvm
 
       logInfo "running preprocessor steps"
-      tmpDir <-
-        liftIO $ getCanonicalTemporaryDirectory >>= flip createTempDirectory "forge-preprocess"
+      tmpDir <- liftIO $ getCanonicalTemporaryDirectory >>= flip createTempDirectory "forge-preprocess"
       mainJarPath <- reThrow $ toText . toFilePath <$> V.mainJarPath vvm
       dataMap <-
         (dataMap <>) . (at "{MINECRAFT_JAR}" ?~ mainJarPath) <$> do
@@ -387,16 +385,12 @@ preprocess fv vvm im = do
                     & setStdin nullStream
                     & setStdout handle
                     & setStderr handle
-            runProcess p >>= \case
-              ExitSuccess -> pass
-              _ -> do
-                logInfo [i|preprocessing log dir: $tmpDir|]
-                throwString [i|preprocessing ${show ipro} failed!|]
+            runProcess p >>= traverseOf #_ExitFailure \_ -> do
+              logInfo [i|preprocessing log dir: $tmpDir|]
+              throwString [i|preprocessing ${show ipro} failed!|]
       removeDirRecur =<< reThrow (parseAbsDir tmpDir)
       checkPreprocessingOutputs im (expandVia dataMap) >>= rethrow
       logInfo "finished preprocessing"
-
-      pass
   where
     bistrip p s = \case
       (T.stripPrefix p -> Just (T.stripSuffix s -> Just v)) -> Just v
@@ -411,9 +405,8 @@ checkPreprocessingOutputs im expander = do
       sha1 <- rethrow $ makeSHA1 sha1
       fp <- reThrow $ parseAbsFile $ toString fp
       checkSha1 fp (Just sha1) <&> ($> fp) . leftToMaybe
-  pure case invalidPaths of
-    [] -> pass
-    ip : _ -> Left $ [i|invalid hash for processed file ${}|] $ toFilePath ip
+  pure $ whenNotNull invalidPaths \(ip :| _) ->
+    Left $ [i|invalid hash for processed file ${}|] $ toFilePath ip
 
 downloadLibraries ::
   (MonadUnliftIO m, MRHasAll r '[MCSide, DirConfig, Manager] m) =>
