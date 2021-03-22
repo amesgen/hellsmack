@@ -13,6 +13,7 @@ Some Minecraft stuff as a CLI:
  - Manage CurseForge mods
     - install
     - update
+    - deduplicate
  - Install CurseForge modpacks
 
 ## ToC

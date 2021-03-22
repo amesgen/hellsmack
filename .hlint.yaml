@@ -219,11 +219,21 @@
     lhs: "f <$> nonEmpty x"
     rhs: viaNonEmpty f x
 - warn:
+    lhs: partitionEithers . map f
+    rhs: partitionWith f
+- warn:
+    lhs: partitionEithers $ map f x
+    rhs: partitionWith f x
+- warn:
     lhs: "f >>= guard"
     rhs: guardM f
 - warn:
-    lhs: "guard =<< f"
+    lhs: guard =<< f
     rhs: guardM f
+- warn:
+    lhs: forever
+    note: "'forever' is loosely typed and may hide errors"
+    rhs: infinitely
 - warn:
     lhs: "whenM (not <$> x)"
     rhs: unlessM x
@@ -309,7 +319,7 @@
     lhs: "maybe (return ()) f =<< m"
     rhs: whenJustM m f
 - warn:
-    lhs: "maybe pass        f =<< m"
+    lhs: maybe pass        f =<< m
     rhs: whenJustM m f
 - warn:
     lhs: "m >>= maybe (pure ())   f"
@@ -1119,11 +1129,6 @@
     note: "'Natural' is already exported from Relude"
     rhs: Natural
 - warn:
-    lhs: System.IO.Handle
-    name: "Use 'Handle' from Relude"
-    note: "'Handle' is already exported from Relude"
-    rhs: Handle
-- warn:
     lhs: System.IO.IOMode
     name: "Use 'IOMode' from Relude"
     note: "'IOMode' is already exported from Relude"
@@ -1148,26 +1153,6 @@
     name: "Use 'ReadWriteMode' from Relude"
     note: "'ReadWriteMode' is already exported from Relude"
     rhs: ReadWriteMode
-- warn:
-    lhs: System.IO.stderr
-    name: "Use 'stderr' from Relude"
-    note: "'stderr' is already exported from Relude"
-    rhs: stderr
-- warn:
-    lhs: System.IO.stdin
-    name: "Use 'stdin' from Relude"
-    note: "'stdin' is already exported from Relude"
-    rhs: stdin
-- warn:
-    lhs: System.IO.stdout
-    name: "Use 'stdout' from Relude"
-    note: "'stdout' is already exported from Relude"
-    rhs: stdout
-- warn:
-    lhs: System.IO.withFile
-    name: "Use 'withFile' from Relude"
-    note: "'withFile' is already exported from Relude"
-    rhs: withFile
 - warn:
     lhs: Data.Ord.Down
     name: "Use 'Down' from Relude"
@@ -1802,7 +1787,7 @@
     lhs: Data.Function.on
     name: "Use 'on' from Relude"
     note: "'on' is already exported from Relude"
-    rhs: "on"
+    rhs: 'on'
 - warn:
     lhs: Data.Bifunctor.Bifunctor
     name: "Use 'Bifunctor' from Relude"
@@ -2095,6 +2080,66 @@
     name: "Use 'getLine' from Relude"
     note: "'getLine' is already exported from Relude"
     rhs: getLine
+- warn:
+    lhs: System.IO.hFlush
+    name: "Use 'hFlush' from Relude"
+    note: "'hFlush' is already exported from Relude"
+    rhs: hFlush
+- warn:
+    lhs: System.IO.hIsEOF
+    name: "Use 'hIsEOF' from Relude"
+    note: "'hIsEOF' is already exported from Relude"
+    rhs: hIsEOF
+- warn:
+    lhs: System.IO.hSetBuffering
+    name: "Use 'hSetBuffering' from Relude"
+    note: "'hSetBuffering' is already exported from Relude"
+    rhs: hSetBuffering
+- warn:
+    lhs: System.IO.hGetBuffering
+    name: "Use 'hGetBuffering' from Relude"
+    note: "'hGetBuffering' is already exported from Relude"
+    rhs: hGetBuffering
+- warn:
+    lhs: System.IO.Handle
+    name: "Use 'Handle' from Relude"
+    note: "'Handle' is already exported from Relude"
+    rhs: Handle
+- warn:
+    lhs: System.IO.stdin
+    name: "Use 'stdin' from Relude"
+    note: "'stdin' is already exported from Relude"
+    rhs: stdin
+- warn:
+    lhs: System.IO.stdout
+    name: "Use 'stdout' from Relude"
+    note: "'stdout' is already exported from Relude"
+    rhs: stdout
+- warn:
+    lhs: System.IO.stderr
+    name: "Use 'stderr' from Relude"
+    note: "'stderr' is already exported from Relude"
+    rhs: stderr
+- warn:
+    lhs: System.IO.withFile
+    name: "Use 'withFile' from Relude"
+    note: "'withFile' is already exported from Relude"
+    rhs: withFile
+- warn:
+    lhs: System.IO.BufferMode
+    name: "Use 'BufferMode' from Relude"
+    note: "'BufferMode' is already exported from Relude"
+    rhs: BufferMode
+- warn:
+    lhs: System.Environment.getArgs
+    name: "Use 'getArgs' from Relude"
+    note: "'getArgs' is already exported from Relude"
+    rhs: getArgs
+- warn:
+    lhs: System.Environment.lookupEnv
+    name: "Use 'lookupEnv' from Relude"
+    note: "'lookupEnv' is already exported from Relude"
+    rhs: lookupEnv
 - warn:
     lhs: Data.List.genericDrop
     name: "Use 'genericDrop' from Relude"
@@ -3095,6 +3140,36 @@
     name: "'liftIO' is not needed"
     note: "If you import 'putLBSLn' from Relude, it's already lifted"
     rhs: putLBSLn
+- warn:
+    lhs: "(liftIO (hFlush x))"
+    name: "'liftIO' is not needed"
+    note: "If you import 'hFlush' from Relude, it's already lifted"
+    rhs: hFlush
+- warn:
+    lhs: "(liftIO (hIsEOF x))"
+    name: "'liftIO' is not needed"
+    note: "If you import 'hIsEOF' from Relude, it's already lifted"
+    rhs: hIsEOF
+- warn:
+    lhs: "(liftIO (hSetBuffering x y))"
+    name: "'liftIO' is not needed"
+    note: "If you import 'hSetBuffering' from Relude, it's already lifted"
+    rhs: hSetBuffering
+- warn:
+    lhs: "(liftIO (hGetBuffering x))"
+    name: "'liftIO' is not needed"
+    note: "If you import 'hGetBuffering' from Relude, it's already lifted"
+    rhs: hGetBuffering
+- warn:
+    lhs: "(liftIO (getArgs ))"
+    name: "'liftIO' is not needed"
+    note: "If you import 'getArgs' from Relude, it's already lifted"
+    rhs: getArgs
+- warn:
+    lhs: "(liftIO (lookupEnv x))"
+    name: "'liftIO' is not needed"
+    note: "If you import 'lookupEnv' from Relude, it's already lifted"
+    rhs: lookupEnv
 - hint:
     lhs: "fmap (bimap f g)"
     note: "Use `bimapF` from `Relude.Extra.Bifunctor`"
@@ -3135,6 +3210,10 @@
     lhs: toEnum
     note: "`toEnum` from `Prelude` is a pure function but it may throw exception. Consider using `safeToEnum` from `Relude.Extra.Enum` instead."
     rhs: safeToEnum
+- hint:
+    lhs: sum xs / length xs
+    note: "Use `average` from `Relude.Extra.Foldable`"
+    rhs: average xs
 - hint:
     lhs: "\\a -> (a, a)"
     note: "Use `dup` from `Relude.Extra.Tuple`"

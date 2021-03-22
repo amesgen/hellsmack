@@ -117,14 +117,14 @@ downloadFullModpack ModpackInstallOptions {..} = do
           \ModLoaderInfo {id} -> logInfo $ [i|mod loader: ${}|] $ C.formatWith [C.bold] id
 
         let (optionalFileIds, requiredFileIds) =
-              manifest ^. #files
-                <&> do \f -> (chosen %~ (^. #fileID)) . bool Left Right (f ^. #required) $ f
-                & partitionEithers
+              manifest ^. #files & partitionWith \f ->
+                (chosen %~ (^. #fileID)) . bool Left Right (f ^. #required) $ f
 
         logInfo $ [i|fetching metadata of $show mods|] $ length requiredFileIds
         files <- getAddonFilesByFileIds requiredFileIds <&> (^.. each . folded)
 
-        logInfo "downloading mods"
+        let modSize = showBytes' $ sumOf (each . #fileLength) files
+        logInfo $ [i|downloading mods ($modSize)|]
         let modDir = outDir </> [reldir|mods|]
         ensureDir modDir
         stepWise (withGenericProgress (length files)) \step ->
@@ -290,11 +290,9 @@ findInCurseDB inputs = do
     M.fromList . (^.. #exactMatches . each . to ((^. #file . #packageFingerprint) &&& identity))
       <$> getFingerprintMatches (fst <$> fps)
   let result@(unknown, _) =
-        fps <&> do
-          \(fp, path) -> case fpms ^? ix fp of
-            Just FingerprintMatch {..} -> Right (id, file, path)
-            Nothing -> Left path
-          & partitionEithers
+        fps & partitionWith \(fp, path) -> case fpms ^? ix fp of
+          Just FingerprintMatch {..} -> Right (id, file, path)
+          Nothing -> Left path
   unless (null unknown) do
     logWarn $ [i|these ${show} files are not present in the CurseForge mod database:|] $ length unknown
     for_ unknown $ logWarn . [i| - ${}|] . toFilePath

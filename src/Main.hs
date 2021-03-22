@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
@@ -21,14 +20,14 @@ import HellSmack.Yggdrasil
 import Main.Utf8 (withUtf8)
 import Options.Applicative qualified as OA
 import Path.IO
-import System.Exit hiding (exitFailure)
+import System.Exit (ExitCode (..))
 import UnliftIO.Exception
 
 main :: IO ()
 main =
   withUtf8 . displayErrors $ do
     -- TODO use some open product thingy (cf. jrec branch)
-    getArgs >>= \CLI {..} -> do
+    getCLI >>= \CLI {..} -> do
       dataDir <- maybe defaultDataDir makeSomeAbsolute dataDir
       ensureDir dataDir
       let authPath = dataDir </> [relfile|auth.json|]
@@ -145,8 +144,8 @@ data ModOptions
   | ModDeduplicate Curse.ModDeduplicateOptions
   deriving stock (Show, Generic)
 
-getArgs :: IO CLI
-getArgs = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
+getCLI :: IO CLI
+getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
   where
     ver = OA.infoOption (toString verStr) do
       OA.short 'V' <> OA.long "version" <> OA.help "Print version"

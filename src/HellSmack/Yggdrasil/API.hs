@@ -30,7 +30,13 @@ data YggdrasilException = YggdrasilException
     cause :: Maybe Text
   }
   deriving stock (Show, Generic)
-  deriving anyclass (Exception, FromJSON)
+  deriving anyclass (FromJSON)
+
+instance Exception YggdrasilException where
+  displayException YggdrasilException {..} =
+    [i|Yggdrasil authentication error: $errorMessage ($error$causeMsg)|]
+    where
+      causeMsg = maybe "" [iT|, caused by ${}|] cause
 
 newtype AccessToken = AccessToken {unAccessToken :: Text}
   deriving stock (Show, Eq, Generic)

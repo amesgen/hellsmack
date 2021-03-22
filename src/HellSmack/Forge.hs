@@ -345,10 +345,9 @@ preprocess fv vvm im = do
     Left _ -> do
       logInfo "starting forge preprocessing"
       let (embedded, downloadable) =
-            partitionEithers $
-              im ^. #libraries <&> \case
-                l | l & has do #downloads . #artifact . _Just . #url . only "" -> Left l
-                l -> Right l
+            im ^. #libraries & partitionWith \case
+              l | l & has do #downloads . #artifact . _Just . #url . only "" -> Left l
+              l -> Right l
       libDir <- siehs @DirConfig #libraryDir
       forOf_ (each . #downloads . #artifact . _Just . #path) embedded \fp ->
         extractFromInstaller' fv ([reldir|maven|] </> fp) (libDir </> fp)

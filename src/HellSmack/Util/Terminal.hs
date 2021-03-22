@@ -37,7 +37,7 @@ import Text.Printf (printf)
 import UnliftIO.Async
 import UnliftIO.Concurrent
 import UnliftIO.Exception
-import UnliftIO.IO
+import UnliftIO.IO (hIsTerminalDevice)
 
 showBytes :: Integral a => a -> a -> Text
 showBytes (fromIntegral -> ref :: Double) (fromIntegral -> a :: Double) =
@@ -119,7 +119,7 @@ withProgress showN' maxCount cb =
           Nothing -> 80
       countRef <- newIORef 0
       start <- currentTime
-      let withProgressBar = withAsyncWithUnmask \unmask -> forever do
+      let withProgressBar = withAsyncWithUnmask \unmask -> infinitely do
             count <- readIORef countRef
             diff <- diffAbsoluteTime <$> currentTime <*> pure start
             let p = round @Double $ fromIntegral count / fromIntegral maxCount * fromIntegral barLength
@@ -127,7 +127,7 @@ withProgress showN' maxCount cb =
                 bar = fW C.green (T.replicate p "#") <> fW C.blue (T.replicate (barLength - p) "-")
             putTextLn $ barTxt diff bar count
             unmask (threadDelay printTickMicros) `finally` clearLastLines 1
-      withProgressBar \_ -> cb $ modifyIORef' countRef
+      withProgressBar \_ -> cb $ atomicModifyIORef'_ countRef
     False -> cb $ const pass
   where
     barTxt diff bar count = [i|[$diffTxt] $bar ${} / ${}|] (showN count) (showN maxCount)
