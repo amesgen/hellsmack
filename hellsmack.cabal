@@ -37,6 +37,7 @@ library
       autoexporter:autoexporter >= 1.1
   build-depends:
       relude >= 1.0
+    , these >= 1.1
     , transformers >= 0.5
     , random >= 1.2
     , filepath >= 1.4
@@ -137,7 +138,7 @@ test-suite tasty
       tasty >= 1.4
     , tasty-hunit >= 0.10
 
-    , containers
+    , relude
     , path-io
     , unliftio
   other-modules:

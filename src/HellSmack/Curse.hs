@@ -123,12 +123,35 @@ downloadFullModpack ModpackInstallOptions {..} = do
         logInfo $ [i|fetching metadata of $show mods|] $ length requiredFileIds
         files <- getAddonFilesByFileIds requiredFileIds <&> (^.. each . folded)
 
-        let modSize = showBytes' $ sumOf (each . #fileLength) files
-        logInfo $ [i|downloading mods ($modSize)|]
         let modDir = outDir </> [reldir|mods|]
         ensureDir modDir
-        stepWise (withGenericProgress (length files)) \step ->
-          forConcurrentlyNetwork_ files \a -> step $ downloadAddonFile a modDir HideProgress
+        (unknownMods, oldFiles) <- findInCurseDB [toFilePath modDir]
+        let oldModsByFP = oldFiles <&> \(_, af, p) -> (af ^. #packageFingerprint, This (af, p))
+            newModsByFP = files <&> \af -> (af ^. #packageFingerprint, That af)
+            (unzip -> (_, knownOldMods), trulyNewMods, sameMods) =
+              partitionThese . M.elems $ M.unionWith mergeThese (M.fromList newModsByFP) (M.fromList oldModsByFP)
+              where
+                mergeThese (This a) (That b) = These a b
+                mergeThese (That b) (This a) = These a b
+                mergeThese _ _ = error "invalid state"
+            deletableOldFiles = unknownMods <> knownOldMods
+        for_ sameMods \((oldFile, toFilePath -> p), newFile) ->
+          when (oldFile ^. #id /= newFile ^. #id) $ throwString [i|internal ID conflict for mod $p|]
+
+        case trulyNewMods of
+          [] -> logInfo "no new mods need to be downloaded"
+          _ -> do
+            let modSize = showBytes' $ sumOf (each . #fileLength) trulyNewMods
+                modCount = length trulyNewMods
+            logInfo [i|downloading ${show modCount} mods ($modSize)|]
+            stepWise (withGenericProgress modCount) \step ->
+              forConcurrentlyNetwork_ trulyNewMods \a -> step $ downloadAddonFile a modDir HideProgress
+
+        whenNotNull deletableOldFiles \_ -> do
+          logInfo $ [i|deleting $show stale mod files|] (length deletableOldFiles)
+          for_ deletableOldFiles \p -> do
+            logTrace $ [i| - ${}|] $ toFilePath p
+            removeFile p
 
         whenNotNull optionalFileIds \_ -> do
           urls <- getAddonFilesByFileIds optionalFileIds <&> (^.. each . folded . #downloadUrl)

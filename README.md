@@ -14,7 +14,7 @@ Some Minecraft stuff as a CLI:
     - install
     - update
     - deduplicate
- - Install CurseForge modpacks
+ - Install and update CurseForge modpacks
 
 ## ToC
 
@@ -97,6 +97,13 @@ hellsmack curse modpacks install client 3145702
 ```
 
 In each case, one can use `server` instead of `client` (if a server pack is available).
+
+To update a modpack:
+
+ 1. Backup your saves and customizations in `options.txt`, `config/` etc.
+ 2. Remove all folders except `mods`.
+ 3. Install the new modpack version like above (this will take care of only downloading new/changed mods in the `mods` folder).
+ 4. Reapply your customizations.
 
 ## Installation
 
