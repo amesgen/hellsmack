@@ -1,4 +1,4 @@
-module YggdrasilTest where
+module HellSmack.Test.YggdrasilTest where
 
 import HellSmack.Http
 import HellSmack.Yggdrasil.API

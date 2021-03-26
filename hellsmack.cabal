@@ -142,6 +142,6 @@ test-suite tasty
     , path-io
     , unliftio
   other-modules:
-      CurseTest
-      VanillaTest
-      YggdrasilTest
+      HellSmack.Test.CurseTest
+      HellSmack.Test.VanillaTest
+      HellSmack.Test.YggdrasilTest

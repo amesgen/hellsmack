@@ -1,6 +1,6 @@
 {-# LANGUAGE NoMonoLocalBinds #-}
 
-module VanillaTest where
+module HellSmack.Test.VanillaTest where
 
 import HellSmack.Http
 import HellSmack.Util.Download (forConcurrentlyNetwork_)

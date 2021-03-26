@@ -1,6 +1,6 @@
 {-# LANGUAGE NoMonoLocalBinds #-}
 
-module CurseTest where
+module HellSmack.Test.CurseTest where
 
 import Data.Map.Strict qualified as Map
 import HellSmack.Curse.API
