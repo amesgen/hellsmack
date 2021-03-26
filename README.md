@@ -16,17 +16,6 @@ Some Minecraft stuff as a CLI:
     - deduplicate
  - Install and update CurseForge modpacks
 
-## ToC
-
- * [Usage](#usage)
-    * [Launching](#launching)
-       * [Authentication](#authentication)
-    * [CurseForge](#curseforge)
-       * [Mods](#mods)
-       * [Modpacks](#modpacks)
- * [Installation](#installation)
- * [Building](#building)
-
 ## Usage
 
 ### Launching
