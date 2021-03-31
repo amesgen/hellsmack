@@ -37,10 +37,6 @@ import Conduit hiding (ReleaseType)
 import Data.Aeson
 import Data.List (isInfixOf)
 import Data.List.Lens
-import Data.List.NonEmpty qualified as NE
-import Data.Map.Strict qualified as M
-import Data.Set qualified as S
-import Data.Text qualified as T
 import Data.Text.Lens
 import GHC.Conc (getNumCapabilities)
 import HellSmack.Curse.API

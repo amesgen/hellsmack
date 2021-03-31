@@ -60,9 +60,7 @@ import Codec.Archive.Zip
 import Conduit
 import Data.Aeson
 import Data.Aeson.Lens
-import Data.Map.Strict qualified as M
 import Data.Semigroup.Generic
-import Data.Text qualified as T
 import Data.Text.Lens
 import Data.Time
 import HellSmack.Logging

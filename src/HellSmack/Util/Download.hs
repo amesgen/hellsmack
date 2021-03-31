@@ -25,10 +25,8 @@ import Conduit
 import Control.Monad.Trans.Except
 import Crypto.Hash.SHA1 qualified as SHA1
 import Data.Aeson
-import Data.ByteString qualified as B
 import Data.ByteString.Base16 qualified as B
 import Data.List (lookup)
-import Data.Text qualified as T
 import Data.Text.Encoding.Base16 qualified as T
 import HellSmack.Util.Exception
 import HellSmack.Util.Has

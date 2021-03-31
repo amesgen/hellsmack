@@ -2,7 +2,6 @@
 
 module HellSmack.Test.CurseTest where
 
-import Data.Map.Strict qualified as Map
 import HellSmack.Curse.API
 import HellSmack.Http
 import HellSmack.Util
@@ -20,7 +19,7 @@ test_sanity = do
     game ^. #name @?= "Minecraft"
     game ^. #id @?= minecraftGameId
 
-    let css = Map.fromList $ fmapToFst (^. #gameCategoryId) categorySections
+    let css = M.fromList $ fmapToFst (^. #gameCategoryId) categorySections
 
     Just modCS <- pure $ css ^. at minecraftModsSection
     modCS ^. #name @?= "Mods"

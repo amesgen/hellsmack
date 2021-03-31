@@ -14,8 +14,6 @@ import Data.Aeson
 import Data.Aeson.Lens
 import Data.Aeson.Types (parseEither)
 import Data.Conduit.Process.Typed
-import Data.Map.Strict qualified as M
-import Data.Text qualified as T
 import Data.Text.Lens
 import Data.Time
 import HellSmack.Logging

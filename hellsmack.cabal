@@ -24,6 +24,9 @@ common commons
   default-extensions: AllowAmbiguousTypes ApplicativeDo BangPatterns BinaryLiterals BlockArguments ConstraintKinds DataKinds DefaultSignatures DeriveAnyClass DeriveFoldable DeriveFunctor DeriveGeneric DeriveLift DeriveTraversable DerivingStrategies DerivingVia DuplicateRecordFields EmptyCase ExistentialQuantification FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving ImportQualifiedPost InstanceSigs KindSignatures LambdaCase LiberalTypeSynonyms MultiParamTypeClasses MultiWayIf NamedFieldPuns NoStarIsType OverloadedLabels OverloadedStrings PackageImports PatternSynonyms PolyKinds QuantifiedConstraints QuasiQuotes RankNTypes RecordWildCards RoleAnnotations ScopedTypeVariables StandaloneDeriving StandaloneKindSignatures StrictData TemplateHaskell TupleSections TypeApplications TypeFamilies TypeFamilyDependencies TypeOperators UnliftedNewtypes ViewPatterns
   ghc-options: -Wall -Werror -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -Wmissing-deriving-strategies -Wunused-packages -Wwarn=unused-packages -fhide-source-paths -fno-warn-name-shadowing
   default-language: Haskell2010
+  build-tool-depends: autoexporter:autoexporter >= 1.1
+  build-depends: qualified-imports-plugin >= 0.0
+  ghc-options: -fplugin=QualifiedImportsPlugin -fplugin-opt=QualifiedImportsPlugin:no-defaults -fplugin-opt=QualifiedImportsPlugin:Data.Text:T -fplugin-opt=QualifiedImportsPlugin:Data.Map.Strict:M -fplugin-opt=QualifiedImportsPlugin:Data.Set:S -fplugin-opt=QualifiedImportsPlugin:Data.ByteString:B -fplugin-opt=QualifiedImportsPlugin:Data.List.NonEmpty:NE
 
 common base-no-prelude
   build-depends: base >= 4.14
@@ -33,8 +36,6 @@ library
   import: commons, base-no-prelude
   ghc-options: -Wmissing-export-lists
 
-  build-tool-depends:
-      autoexporter:autoexporter >= 1.1
   build-depends:
       relude >= 1.0
     , these >= 1.1
@@ -98,10 +99,8 @@ library
       HellSmack.Util.Terminal
       HellSmack.Http
       Main
-  other-modules:
-      Paths_hellsmack
-  autogen-modules:
-      Paths_hellsmack
+  other-modules: Paths_hellsmack
+  autogen-modules: Paths_hellsmack
   hs-source-dirs: src
 
   if os(linux)

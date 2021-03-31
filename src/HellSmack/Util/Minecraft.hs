@@ -19,7 +19,6 @@ where
 
 import Data.Aeson
 import Data.Conduit.Process.Typed
-import Data.Text qualified as T
 import HellSmack.Logging
 import HellSmack.Util.Has
 import HellSmack.Util.Newtypes
