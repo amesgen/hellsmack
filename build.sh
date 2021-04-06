@@ -6,9 +6,7 @@ GHC_OPTIONS="-fspecialise-aggressively -fexpose-all-unfoldings -flate-specialise
 if [[ "$OSTYPE" == "linux-"* ]]; then
     GHC_OPTIONS+=" -split-sections"
 fi
-if [ -z "$STATIC_BUILD" ]; then
-    CABAL_OPTIONS+=" -fuse-openssl"
-else
+if ! [ -z "$STATIC_BUILD" ]; then
     CABAL_OPTIONS+=" --enable-executable-static"
 fi
 

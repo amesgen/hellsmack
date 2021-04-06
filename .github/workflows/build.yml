@@ -20,6 +20,7 @@ jobs:
             openssl-dev openssl-libs-static \
             bzip2 bzip2-dev bzip2-static \
             zlib zlib-dev zlib-static \
+            ncurses ncurses-dev ncurses-static \
             bash
       - uses: haskell/actions/setup@v1
         with:
@@ -48,6 +49,10 @@ jobs:
       - uses: haskell/actions/setup@v1
         with:
           ghc-version: ${{ env.GHC }}
+      - if: runner.os == 'Windows'
+        name: Setup Cabal native lib dirs
+        run: |
+          cabal user-config update -a "extra-include-dirs: C:/msys64/mingw64/include" -a "extra-lib-dirs: C:/msys64/mingw64/lib"
       - name: Build binary
         run: bash build.sh
       - uses: actions/upload-release-asset@v1
