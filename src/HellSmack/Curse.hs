@@ -35,6 +35,7 @@ import Codec.Archive.Zip
 import Colourista.Pure qualified as C
 import Conduit hiding (ReleaseType)
 import Data.Aeson
+import Data.Align
 import Data.List (isInfixOf)
 import Data.List.Lens
 import Data.Text.Lens
@@ -122,17 +123,15 @@ downloadFullModpack ModpackInstallOptions {..} = do
         let modDir = outDir </> [reldir|mods|]
         ensureDir modDir
         (unknownMods, oldFiles) <- findInCurseDB [toFilePath modDir]
-        let oldModsByFP = oldFiles <&> \(_, af, p) -> (af ^. #packageFingerprint, This (af, p))
-            newModsByFP = files <&> \af -> (af ^. #packageFingerprint, That af)
+        let oldModsByFP = oldFiles <&> \(_, af, p) -> (af ^. #packageFingerprint, (af, p))
+            newModsByFP = files & fmapToFst (^. #packageFingerprint)
             (unzip -> (_, knownOldMods), trulyNewMods, sameMods) =
-              partitionThese . M.elems $ M.unionWith mergeThese (M.fromList newModsByFP) (M.fromList oldModsByFP)
-              where
-                mergeThese (This a) (That b) = These a b
-                mergeThese (That b) (This a) = These a b
-                mergeThese _ _ = error "invalid state"
+              partitionThese . M.elems $ M.fromList oldModsByFP `align` M.fromList newModsByFP
             deletableOldFiles = unknownMods <> knownOldMods
         for_ sameMods \((oldFile, toFilePath -> p), newFile) ->
           when (oldFile ^. #id /= newFile ^. #id) $ throwString [i|internal ID conflict for mod $p|]
+
+        whenNotNull sameMods $ logInfo . [i|$show mods already present|] . length
 
         case trulyNewMods of
           [] -> logInfo "no new mods need to be downloaded"

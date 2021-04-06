@@ -39,6 +39,7 @@ library
   build-depends:
       relude >= 1.0
     , these >= 1.1
+    , semialign >= 1.2
     , transformers >= 0.5
     , random >= 1.2
     , filepath >= 1.4
