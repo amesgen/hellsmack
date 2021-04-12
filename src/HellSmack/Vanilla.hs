@@ -31,6 +31,8 @@ module HellSmack.Vanilla
 
     -- ** Assets
     getAssetIndex,
+    AssetsType (..),
+    assetsType,
     downloadAssets,
 
     -- ** Rules
@@ -258,8 +260,10 @@ data Artifact = Artifact
   deriving stock (Show, Eq, Generic)
   deriving anyclass (FromJSON)
 
-newtype Assets = Assets
-  { objects :: Map Text Asset
+data Assets = Assets
+  { objects :: Map (Path Rel File) Asset,
+    virtual :: Maybe Bool,
+    map_to_resources :: Maybe Bool
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass (FromJSON)
@@ -305,29 +309,53 @@ getVersionManifest version = do
 getAssetIndex :: (MonadIO m, MRHasAll r [DirConfig, Manager] m) => VersionManifest -> m Assets
 getAssetIndex vm = do
   let AssetIndex {id, url, sha1} = vm ^. #assetIndex
-  idFile <- reThrow . parseRelFile $ [i|${show id}.json|]
+  idFile <- reThrow . parseRelFile $ [i|$id.json|]
   assetIndexPath <- siehs @DirConfig $ #assetDir . to (</> [reldir|indexes|] </> idFile)
   downloadCachedJson url assetIndexPath (Just sha1)
 
 assetUrl :: Text
 assetUrl = "https://resources.download.minecraft.net"
 
-assetObjectsDir :: MRHas r DirConfig m => m (Path Abs Dir)
-assetObjectsDir = siehs @DirConfig #assetDir <&> (</> [reldir|objects|])
+data AssetsType = ModernAssetsType | LegacyAssetsType | Pre16AssetsType
+  deriving stock (Show, Eq, Ord, Generic, Enum, Bounded)
+
+assetsType :: MonadFail m => Assets -> m AssetsType
+assetsType assets = case (assets ^. #virtual, assets ^. #map_to_resources) of
+  (Nothing, Nothing) -> pure ModernAssetsType
+  (Just True, Nothing) -> pure LegacyAssetsType
+  (Nothing, Just True) -> pure Pre16AssetsType -- actually support this?
+  _ -> fail [i|cannot detect assets type|]
+
+assetObjectsDir :: (MonadFail m, MRHas r DirConfig m) => Assets -> m (Path Abs Dir)
+assetObjectsDir assets =
+  assetsType assets >>= \case
+    ModernAssetsType -> assetsSubDir [reldir|objects|]
+    LegacyAssetsType -> assetsSubDir [reldir|virtual/legacy|]
+    Pre16AssetsType -> fail "invalid assets type"
+  where
+    assetsSubDir sub = siehs @DirConfig #assetDir <&> (</> sub)
 
 downloadAssets ::
-  (MonadUnliftIO m, MRHasAll r [DirConfig, Manager, MCSide] m) =>
+  (MonadUnliftIO m, MRHasAll r [DirConfig, Manager, MCSide, Logger] m) =>
   Assets ->
   m ()
-downloadAssets Assets {objects} = do
-  baseDir <- assetObjectsDir
-  stepWise (withGenericProgress (length objects)) \step ->
-    forConcurrentlyNetwork_ objects \Asset {hash} -> step do
-      let hashs = toString $ unSHA1 hash
-          h2 = take 2 hashs
-          url = [i|$assetUrl/$h2/${}|] $ unSHA1 hash
-      ((baseDir </>) -> path) <- reThrow $ (</>) <$> parseRelDir h2 <*> parseRelFile hashs
-      downloadHash url path (Just hash) HideProgress
+downloadAssets assets@Assets {objects} = do
+  baseDir <- reThrow $ assetObjectsDir assets
+  let forAllAssets getPath = stepWise (withGenericProgress (length objects)) \step ->
+        forConcurrentlyNetwork_ (M.toList objects) \e@(_, Asset {hash}) -> step do
+          path <- getPath e
+          let url = [i|$assetUrl/${}|] $ h2hash hash
+          downloadHash url path (Just hash) HideProgress
+      h2hash (unSHA1 -> hash) = [iS|${}/$hash|] $ T.take 2 hash
+  rethrow (assetsType assets) >>= \case
+    ModernAssetsType -> forAllAssets \(_, Asset {hash}) -> do
+      file <- reThrow $ parseRelFile $ h2hash hash
+      pure $ baseDir </> file
+    LegacyAssetsType -> forAllAssets \(file, _ö) -> do
+      let path = baseDir </> file
+      ensureDir $ parent path
+      pure path
+    Pre16AssetsType -> throwString "invalid assets type"
 
 doesPropertyApply :: Property -> Bool
 doesPropertyApply Property {key, value} = case knownProperties ^? ix key of
@@ -452,9 +480,10 @@ data ProcessedArguments = ProcessedArguments
 processArguments ::
   (MonadIO m, MRHasAll r [DirConfig, MCSide, GameDir, MCAuth] m) =>
   VersionManifest ->
+  Assets ->
   String ->
   m ProcessedArguments
-processArguments vm classpath = do
+processArguments vm assets classpath = do
   let VersionManifest {minecraftArguments = oldArgs, arguments = newArgs} = vm
   uncurry ProcessedArguments . fold . catMaybes
     <$> sequence [forM oldArgs processOldArgs, forM newArgs processNewArgs]
@@ -473,7 +502,7 @@ processArguments vm classpath = do
         cap & _capture @0 %%~ const case cap ^. _capture @"prop" of
           "classpath" -> pure $ toText classpath
           "natives_directory" -> fromPath $ versionNativeDir vm
-          "game_assets" -> fromPath assetObjectsDir
+          "game_assets" -> fromPath $ assetObjectsDir assets
           "assets_root" -> fromPath $ siehs @DirConfig #assetDir
           "assets_index_name" -> pure $ vm ^. #assetIndex . #id
           "game_directory" -> fromPath $ siehs @GameDir $ to unGameDir
@@ -521,7 +550,7 @@ launch vm =
       downloadMainJar vm
       logInfo "preparing launch"
       classpath <- reThrow $ classpathArg vm artifacts
-      ProcessedArguments {..} <- processArguments vm classpath
+      ProcessedArguments {..} <- processArguments vm assets classpath
       let mainClass = vm ^. #mainClass . unpacked
       runMCJava $ jvm <> [mainClass] <> game
     MCServer -> do

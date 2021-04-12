@@ -3,7 +3,7 @@
 module HellSmack.Test.VanillaTest where
 
 import HellSmack.Http
-import HellSmack.Util.Download (forConcurrentlyNetwork_)
+import HellSmack.Util.Download (forConcurrentlyNetwork)
 import HellSmack.Util.Minecraft
 import HellSmack.Vanilla
 import Path.IO
@@ -18,8 +18,14 @@ test_manifests = withSystemTempDir "" \dir -> do
   pure $ testCaseSteps "Vanilla manifest parsing" \step -> do
     step "all versions"
     avm <- run getAllVersionsManifest
-    forConcurrentlyNetwork_ (avm ^.. #versions . each . #id) \version -> run do
-      vm <- getVersionManifest version
-      void $ getAssetIndex vm
+    assetsTypesAndUrls <-
+      M.fromListWith S.union <$> forConcurrentlyNetwork (avm ^.. #versions . each . #id) \version -> run do
+        vm <- getVersionManifest version
+        assets <- getAssetIndex vm
+        at <- assetsType assets
+        pure (at, S.singleton $ vm ^. #assetIndex . #url)
+    iforOf_ (ifolded . indices (isn't #_ModernAssetsType)) assetsTypesAndUrls \at urls ->
+      assertBool [i|not exactly one url for assets type ${show at}: ${show urls}|] $
+        S.size urls == 1
 
 -- TODO expand
