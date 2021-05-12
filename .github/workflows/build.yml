@@ -22,7 +22,7 @@ jobs:
             zlib zlib-dev zlib-static \
             ncurses ncurses-dev ncurses-static \
             bash
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v1.2.1
         with:
           ghc-version: ${{ env.GHC }}
       - uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v1.2.1
         with:
           ghc-version: ${{ env.GHC }}
       - if: runner.os == 'Windows'

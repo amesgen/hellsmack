@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v1.2.1
         id: setup-haskell
         with:
           ghc-version: '8.10.4'
