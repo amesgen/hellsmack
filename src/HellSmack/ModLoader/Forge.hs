@@ -1,9 +1,8 @@
-module HellSmack.Forge
+module HellSmack.ModLoader.Forge
   ( ForgeVersion (..),
     isPre113,
-    ForgeVersionQuery (..),
     allVersionsManifestPath,
-    findForgeVersion,
+    findVersion,
     getVersionManifest,
     launch,
   )
@@ -17,12 +16,12 @@ import Data.Conduit.Process.Typed
 import Data.Text.Lens
 import Data.Time
 import HellSmack.Logging
+import HellSmack.ModLoader
 import HellSmack.Util
 import HellSmack.Vanilla qualified as V
 import HellSmack.Yggdrasil
 import Path.IO
 import System.IO.Temp
-import UnliftIO (MonadUnliftIO)
 import UnliftIO.Exception
 import UnliftIO.IO
 
@@ -58,9 +57,6 @@ isPre113 (ForgeVersion v) = maybeToRight "invalid forge version format" case v
 
 isPre113M :: MonadIO m => ForgeVersion -> m Bool
 isPre113M = rethrow . isPre113
-
-data ForgeVersionQuery = LatestFV | RecommendedFV | ConcreteFV Text
-  deriving stock (Show, Generic)
 
 data VersionManifest = VersionManifest
   { id :: ForgeVersion,
@@ -139,17 +135,17 @@ allVersionsManifestPath :: MRHas r DirConfig m => m (Path Abs File)
 allVersionsManifestPath =
   siehs @DirConfig $ #manifestDir . to (</> [relfile|forgeVersionManifest.json|])
 
-findForgeVersion ::
+findVersion ::
   (MonadIO m, MRHasAll r [DirConfig, Manager] m) =>
   V.MCVersion ->
-  ForgeVersionQuery ->
+  VersionQuery ->
   m ForgeVersion
-findForgeVersion (coerce -> mcVersion) fvq = do
+findVersion (coerce -> mcVersion) fvq = do
   manifestPath <- allVersionsManifestPath
   let promoOrVersion = case fvq of
-        ConcreteFV version -> Right version
-        RecommendedFV -> Left ("recommended" :: Text)
-        LatestFV -> Left "latest"
+        ConcreteVersion version -> Right version
+        RecommendedVersion -> Left ("recommended" :: Text)
+        LatestVersion -> Left "latest"
   (view chosen -> version) <-
     promoOrVersion & _Left %%~ \promoKey ->
       downloadJson promotionsUrl
@@ -439,9 +435,7 @@ launch fv = do
     im <- getInstallerManifest fv
     preprocess fv vvm im
   sieh >>= \case
-    MCClient -> do
-      let vm = mergeWithVanilla vvm fvm libs
-      V.launch vm
+    MCClient -> V.launch $ mergeWithVanilla vvm fvm libs
     MCServer -> do
       downloadLibraries libs
       when isPre113 do

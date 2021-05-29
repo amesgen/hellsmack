@@ -59,7 +59,6 @@ module HellSmack.Vanilla
 where
 
 import Codec.Archive.Zip
-import Conduit
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.Semigroup.Generic
@@ -70,7 +69,6 @@ import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Yggdrasil
 import Path.IO
-import Relude.Debug qualified as RU
 import Text.Regex.Pcre2
 import UnliftIO.Exception
 
@@ -122,7 +120,6 @@ data VersionManifest = VersionManifest
   { arguments :: Maybe Arguments,
     minecraftArguments :: Maybe Text,
     assetIndex :: AssetIndex,
-    assets :: Text,
     downloads :: Map Text Download,
     id :: MCVersion,
     libraries :: [Library],
@@ -360,7 +357,7 @@ downloadAssets assets@Assets {objects} = do
 doesPropertyApply :: Property -> Bool
 doesPropertyApply Property {key, value} = case knownProperties ^? ix key of
   Just applies -> applies value
-  Nothing -> let (k, v) = key in RU.error [i|unknown property: $k.$v|]
+  Nothing -> let (k, v) = key in error [i|unknown property: $k.$v|]
   where
     knownProperties =
       M.fromList
@@ -523,17 +520,7 @@ processArguments vm assets classpath = do
 
 launch ::
   ( MonadUnliftIO m,
-    MRHasAll
-      r
-      [ DirConfig,
-        MCSide,
-        Logger,
-        Manager,
-        GameDir,
-        MCAuth,
-        JavaConfig
-      ]
-      m
+    MRHasAll r [DirConfig, MCSide, Logger, Manager, GameDir, MCAuth, JavaConfig] m
   ) =>
   VersionManifest ->
   m ()

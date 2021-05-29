@@ -21,7 +21,6 @@ import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import Network.HTTP.Client
 import Network.HTTP.Types.Status (Status (..))
-import UnliftIO (MonadUnliftIO)
 import UnliftIO.Exception
 
 data YggdrasilException = YggdrasilException

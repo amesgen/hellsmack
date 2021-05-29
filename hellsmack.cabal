@@ -83,7 +83,9 @@ library
       Prelude
       HellSmack.Logging
       HellSmack.Vanilla
-      HellSmack.Forge
+      HellSmack.ModLoader
+      HellSmack.ModLoader.Forge
+      HellSmack.ModLoader.Fabric
       HellSmack.Curse
       HellSmack.Curse.API
       HellSmack.Yggdrasil
@@ -92,6 +94,7 @@ library
       HellSmack.Util.Download
       HellSmack.Util.Exception
       HellSmack.Util.Has
+      HellSmack.Util.IO
       HellSmack.Util.Meta
       HellSmack.Util.Minecraft
       HellSmack.Util.Murmur

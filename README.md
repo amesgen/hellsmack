@@ -6,10 +6,12 @@ Some Minecraft stuff as a CLI:
 
  - No GUI
  - uNiX pHiLoSoPhY
+ - Does work offline if all necessary have been downloaded previously
  - Launch Minecraft
     - client and server
     - works at least for recent-ish versions (>= 1.7)
     - automatic Forge installation (in particular for > 1.12)
+    - automatic Fabric installation
  - Manage CurseForge mods
     - install
     - update
@@ -22,7 +24,7 @@ Some Minecraft stuff as a CLI:
 
 Launch Vanilla MC:
 ```bash
-hellsmack launch client 1.16.4 /path/to/game/dir
+hellsmack launch client 1.16.5 /path/to/game/dir
 ```
 
 Launch MC 1.12.2 with latest Forge:
@@ -31,10 +33,16 @@ hellsmack launch client 1.12.2 -f latest /path/to/game/dir
 ```
 One can also use `recommended`.
 
-Launch MC 1.16.4 with specific Forge version (see [Forge download page](https://files.minecraftforge.net/)):
+Launch MC 1.16.5 with specific Forge version (see [Forge download page](https://files.minecraftforge.net/)):
 ```bash
-hellsmack launch client 1.16.4 -f 35.1.13 /path/to/game/dir
+hellsmack launch client 1.16.5 -f 35.1.13 /path/to/game/dir
 ```
+
+Similarly, you can use a specific [Fabric](https://fabricmc.net/) version:
+```bash
+hellsmack launch client 1.16.5 --fabric 0.11.3 /path/to/game/dir
+```
+Again, you can use `recommended` or `latest` to select the latest stable or latest version, resp.
 
 In each case, one can use `server` instead of `client`.
 
@@ -46,7 +54,7 @@ hellsmack auth login ibims@gugel.com correcthorsebatterystaple
 ```
 and then use the flag `-a`/`--authenticate`:
 ```bash
-hellsmack launch -a client 1.16.4 /path/to/game/dir
+hellsmack launch -a client 1.16.5 /path/to/game/dir
 ```
 
 ### CurseForge
