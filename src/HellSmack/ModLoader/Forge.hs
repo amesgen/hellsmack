@@ -72,13 +72,7 @@ data VersionManifest = VersionManifest
   deriving stock (Show, Generic)
 
 instance FromJSON VersionManifest where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "versionType" -> "type"
-            l -> l
-        }
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
 
 data Library = Post113Lib V.Library | Pre113Lib Pre113Library
   deriving stock (Show, Generic)
@@ -107,13 +101,7 @@ data InstallerManifest = InstallerManifest
   deriving stock (Show, Generic)
 
 instance FromJSON InstallerManifest where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "dataEntries" -> "data"
-            l -> l
-        }
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "dataEntries" .~ "data"}
 
 data DataEntry = DataEntry
   { client :: Text,

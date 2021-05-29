@@ -132,13 +132,7 @@ data Addon = Addon
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON Addon where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "isExperimental" -> "isExperiemental"
-            l -> l
-        }
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "isExperimental" .~ "isExperiemental"}
 
 data AddonAttachment = AddonAttachment
   { id :: AddonAttachmentId,
@@ -276,13 +270,7 @@ data AddonFileDependency = AddonFileDependency
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON AddonFileDependency where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "dependencyType" -> "type"
-            l -> l
-        }
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "dependencyType" .~ "type"}
 
 newtype DependencyType = DependencyType Int
   deriving stock (Show, Eq, Generic)

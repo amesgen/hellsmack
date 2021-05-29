@@ -96,13 +96,7 @@ data Version = Version
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON Version where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "versionType" -> "type"
-            l -> l
-        }
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
 
 data VersionType = Release | Snapshot | OldAlpha | OldBeta
   deriving stock (Show, Eq, Generic, Enum, Bounded)
@@ -132,13 +126,7 @@ data VersionManifest = VersionManifest
   deriving stock (Show, Eq, Generic)
 
 instance FromJSON VersionManifest where
-  parseJSON =
-    genericParseJSON
-      defaultOptions
-        { fieldLabelModifier = \case
-            "versionType" -> "type"
-            l -> l
-        }
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
 
 data Arguments = Arguments
   { game :: [Argument],
