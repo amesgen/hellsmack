@@ -13,6 +13,9 @@ import HellSmack.ModLoader
 import HellSmack.Util
 import HellSmack.Vanilla qualified as V
 import HellSmack.Yggdrasil
+import Network.HTTP.Client qualified as HTTP
+import Network.HTTP.Types.Status qualified as HTTP
+import UnliftIO.Exception
 
 newtype FabricVersion = FabricVersion {unFabricVersion :: Text}
   deriving stock (Generic)
@@ -61,7 +64,7 @@ allVersionsManifestPath =
   siehs @DirConfig $ #manifestDir . to (</> [relfile|fabricLoaders.json|])
 
 findVersion ::
-  (MonadIO m, MRHasAll r [DirConfig, Manager, Logger] m) =>
+  (MonadUnliftIO m, MRHasAll r [DirConfig, Manager, Logger] m) =>
   VersionQuery ->
   m FabricVersion
 findVersion fvq = do
@@ -82,17 +85,21 @@ findVersion fvq = do
     loadersUrl = [i|$fabricMeta/v2/versions/loader|]
 
 getVersionManifest ::
-  (MonadIO m, MRHasAll r [DirConfig, Manager, Logger, MCSide] m) =>
+  (MonadUnliftIO m, MRHasAll r [DirConfig, Manager, Logger, MCSide] m) =>
   V.MCVersion ->
   FabricVersion ->
   m VersionManifest
 getVersionManifest mcVersion fabricVersion = do
   sideName <- mcSideName
-  manifestFile <- reThrow $ parseRelFile [i|fabric-$sideName-${show fabricVersion}.json|]
+  manifestFile <- reThrow $ parseRelFile [i|fabric-${show mcVersion}-$sideName-${show fabricVersion}.json|]
   manifestPath <- siehs @DirConfig $ #manifestDir . to (</> manifestFile)
   sideSlug :: Text <- sieh <&> \case MCClient -> "profile"; MCServer -> "server"
   let manifestUrl = [i|$fabricMeta/v2/versions/loader/${show mcVersion}/${show fabricVersion}/$sideSlug/json|]
-  downloadCachedJson manifestUrl manifestPath Nothing
+  downloadCachedJson manifestUrl manifestPath Nothing `catch` \case
+    HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException res body)
+      | HTTP.responseStatus res == HTTP.badRequest400 && "no mappings version found for" `B.isPrefixOf` body ->
+        throwString "chosen Fabric version does not support this Minecraft version"
+    e -> throwIO e
 
 libraryToArtifact :: MonadThrow m => Library -> m V.Artifact
 libraryToArtifact Library {..} = do
