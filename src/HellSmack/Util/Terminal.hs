@@ -25,7 +25,6 @@ module HellSmack.Util.Terminal
 where
 
 import Colourista.Pure qualified as C
-import Conduit
 import Data.Time
 import Data.Time.Clock.System
 import Data.Time.Clock.TAI

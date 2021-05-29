@@ -10,9 +10,11 @@ import Data.Text.Lens
 import Development.GitRev
 import HellSmack.Curse qualified as Curse
 import HellSmack.Curse.API qualified as Curse
-import HellSmack.Forge qualified as Forge
 import HellSmack.Http
 import HellSmack.Logging
+import HellSmack.ModLoader qualified as ModLoader
+import HellSmack.ModLoader.Fabric qualified as Fabric
+import HellSmack.ModLoader.Forge qualified as Forge
 import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Vanilla qualified as Vanilla
@@ -44,15 +46,20 @@ main =
           let javaConfig = JavaConfig {..}
           usingReaderT MCConfig {..} do
             sideName <- mcSideName
-            case forgeVersion of
-              Nothing -> do
+            case (forgeVersion, fabricVersion) of
+              (Nothing, Nothing) -> do
                 vm <- Vanilla.getVersionManifest mcVersion
-                logInfo $ [i|launching Minecraft ${} ($sideName)|] $ inGreen mcVersion
+                logInfo $ [i|launching Minecraft ${} ($sideName)|] (inGreen mcVersion)
                 Vanilla.launch vm
-              Just forgeVersion -> do
-                fv <- Forge.findForgeVersion mcVersion forgeVersion
-                logInfo $ [i|launching Minecraft Forge ${} ($sideName)|] $ inGreen fv
+              (Just forgeVersion, Nothing) -> do
+                fv <- Forge.findVersion mcVersion forgeVersion
+                logInfo $ [i|launching Minecraft Forge ${} ($sideName)|] (inGreen fv)
                 Forge.launch fv
+              (Nothing, Just fabricVersion) -> do
+                fv <- Fabric.findVersion fabricVersion
+                logInfo $ [i|launching Minecraft ${}, Fabric ${} ($sideName)|] (inGreen mcVersion) (inGreen fv)
+                Fabric.launch mcVersion fv
+              _ -> throwString "more than one mod loader specified!"
         Auth o -> usingReaderT (httpManager, logger) case o of
           Login LoginOptions {..} -> saveMCAuth authPath email password
           Logout -> invalidateMCAuth authPath
@@ -113,7 +120,8 @@ data LaunchOptions = LaunchOptions
   { javaBin :: SomeBase File,
     extraJvmArgs :: [String],
     mcSide :: MCSide,
-    forgeVersion :: Maybe Forge.ForgeVersionQuery,
+    forgeVersion :: Maybe ModLoader.VersionQuery,
+    fabricVersion :: Maybe ModLoader.VersionQuery,
     authenticate :: Bool,
     mcVersion :: Vanilla.MCVersion,
     gameDir :: SomeBase Dir
@@ -173,8 +181,15 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
       fmap Vanilla.MCVersion . t $
         OA.metavar "MINECRAFT-VERSION" <> mcVersionCompleter <> mods
           <> OA.help "Minecraft version, like 1.7.10 or 1.16-pre8"
-    forgeLatest, forgeRecommended :: String
-    forgeSpecialVersions@(forgeLatest, forgeRecommended) = ("latest", "recommended")
+    versionLatest, versionRecommended :: String
+    specialVersions@(versionLatest, versionRecommended) = ("latest", "recommended")
+    versionQuery (name :: Text) opts = optional $ OA.option
+      do
+        OA.str <&> \case
+          fv | fv == versionLatest -> ModLoader.LatestVersion
+          fv | fv == versionRecommended -> ModLoader.RecommendedVersion
+          fv -> ModLoader.ConcreteVersion $ toText fv
+      do opts <> OA.help [i|$name version, or '${versionRecommended}' or '${versionLatest}'|]
     releaseTypeOpt = enumLike
       OA.option
       \case
@@ -199,8 +214,12 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
         avm ^.. #versions . each . #id . to unMCVersion . unpacked
     forgeVersionCompleter = completerFromFile
       Forge.allVersionsManifestPath
-      do forgeSpecialVersions ^.. each
+      do specialVersions ^.. each
       \(v :: Value) -> v ^.. members . values . _String . unpacked
+    fabricVersionCompleter = completerFromFile
+      Fabric.allVersionsManifestPath
+      do specialVersions ^.. each
+      \(v :: Value) -> v ^.. values . key "version" . _String . unpacked
 
     cliParser = do
       dataDir <-
@@ -234,15 +253,8 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
             a2 = fmap (fmap toString . words) . OA.strOption $ do
               OA.long "jvm-extra-args" <> OA.help "add JVM arguments" <> OA.metavar "ARGS" <> OA.value ""
          in (<>) <$> a1 <*> a2
-      forgeVersion <- optional $ OA.option
-        do
-          OA.str <&> \case
-            fv | fv == forgeLatest -> Forge.LatestFV
-            fv | fv == forgeRecommended -> Forge.RecommendedFV
-            fv -> Forge.ConcreteFV $ toText fv
-        do
-          OA.short 'f' <> OA.long "forge" <> forgeVersionCompleter
-            <> OA.help "Forge version, or 'recommended' or 'latest'"
+      forgeVersion <- versionQuery "Forge" $ OA.short 'f' <> OA.long "forge" <> forgeVersionCompleter
+      fabricVersion <- versionQuery "Fabric" $ OA.long "fabric" <> fabricVersionCompleter
       authenticate <- OA.switch do
         OA.short 'a' <> OA.long "authenticate" <> OA.help "Authenticate (online mode)"
       mcSide <- mcSideLike OA.argument do

@@ -13,7 +13,6 @@ import HellSmack.Logging
 import HellSmack.Util
 import HellSmack.Yggdrasil.API
 import Path.IO
-import UnliftIO (MonadUnliftIO)
 import UnliftIO.Exception
 
 data MCAuth = MCAuth
