@@ -37,6 +37,7 @@ module HellSmack.Curse.API
 
     -- ** CategoryId
     catchAllCategory,
+    fabricModsCategory,
 
     -- ** PackageType
     minecraftModPackageType,
@@ -56,6 +57,7 @@ module HellSmack.Curse.API
     getFingerprintMatches,
     getGame,
     getGames,
+    getCategories,
 
     -- * Fingerprinting
     fingerprintFile,
@@ -327,6 +329,15 @@ data Game = Game
   deriving stock (Show, Eq, Generic)
   deriving anyclass (FromJSON)
 
+data Category = Category
+  { id :: CategoryId,
+    gameId :: GameId,
+    name, slug :: Text,
+    parentGameCategoryId, rootGameCategoryId :: Maybe CategorySectionId
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (FromJSON)
+
 minecraftGameId :: GameId
 minecraftGameId = GameId 432
 
@@ -341,6 +352,9 @@ minecraftModpacksSection = CategorySectionId 4471
 
 catchAllCategory :: CategoryId
 catchAllCategory = CategoryId (-1)
+
+fabricModsCategory :: CategoryId
+fabricModsCategory = CategoryId 4780
 
 minecraftModPackageType :: PackageType
 minecraftModPackageType = PackageType 6
@@ -452,3 +466,6 @@ getGames ::
 getGames supportsAddons = sendJSON [i|game|] GET [("supportsAddons", sa)] (Nothing @())
   where
     sa = if supportsAddons then "true" else "false"
+
+getCategories :: HasManagerIO r m => m [Category]
+getCategories = getJSON "category"

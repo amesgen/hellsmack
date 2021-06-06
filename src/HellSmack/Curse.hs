@@ -109,7 +109,7 @@ downloadFullModpack ModpackInstallOptions {..} = do
             mcVersion :: Text = C.formatWith [C.bold] $ show $ manifest ^. #minecraft . #version
         logInfo [i|modpack version: $modpackVersion, MC version: $mcVersion|]
         forOf_
-          do #minecraft . #modLoaders . each . filtered (view #primary)
+          do #minecraft . #modLoaders . each . filtered (^. #primary)
           manifest
           \ModLoaderInfo {id} -> logInfo $ [i|mod loader: ${}|] $ C.formatWith [C.bold] id
 
@@ -234,7 +234,6 @@ searchInstallModpack ModpackSearchInstallOptions {..} = do
         }
   addon <- case addons & take (fromIntegral numModpacks) & nonEmpty of
     Nothing -> Nothing <$ logWarn "no modpacks found"
-    Just (a :| []) -> pure $ Just a
     Just addons ->
       Just <$> selectViaTable addons ["name", "authors", "download count"] \a ->
         [ formattedVia C.green . toString $ a ^. #name,
@@ -249,7 +248,6 @@ searchInstallModpack ModpackSearchInstallOptions {..} = do
             && f ^. #releaseType <= maxReleaseType
     file <- case files & take (fromIntegral numFiles) & nonEmpty of
       Nothing -> logWarn "no modpack versions found" $> Nothing
-      Just (f :| []) -> pure $ Just f
       Just files ->
         Just <$> selectViaTable files ["name", "release date", "type"] \f ->
           [ formattedVia C.green . toString $ f ^. #displayName,
@@ -455,7 +453,10 @@ searchInstallMod ModSearchInstallOptions {..} = do
         { gameId = minecraftGameId,
           gameVersion = coerce mcVersion,
           categorySectionId = minecraftModsSection,
-          categoryId = catchAllCategory,
+          categoryId = case modLoader of
+            -- there is no category for Forge, only for Fabric
+            ForgeModLoader -> catchAllCategory
+            FabricModLoader -> fabricModsCategory,
           sortMethod = ByPopularity,
           sortDescending = True,
           index = 0,
@@ -464,7 +465,6 @@ searchInstallMod ModSearchInstallOptions {..} = do
         }
   addon <- case addons & take (fromIntegral numMods) & nonEmpty of
     Nothing -> Nothing <$ logWarn "no mods found"
-    Just (a :| []) -> pure $ Just a
     Just addons ->
       Just <$> selectViaTable addons ["name", "authors", "download count"] \a ->
         [ formattedVia C.green . toString $ a ^. #name,
@@ -481,7 +481,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
         logInfo [i|fetching dependency metadata|]
         deps <- findDeps requiredDependencyType file
         whenNotNull deps \deps -> do
-          logInfo $ [i|downloading $show dependencies|] $ C.formatWith [C.green, C.bold] addonName
+          logInfo $ [i|downloading ${} dependencies|] $ C.formatWith [C.green, C.bold] addonName
           stepWise (withGenericProgress (length deps)) \step ->
             forConcurrentlyNetwork_ deps \file ->
               step $ downloadAddonFile file outDir HideProgress
@@ -495,7 +495,6 @@ searchInstallMod ModSearchInstallOptions {..} = do
               && f ^. #releaseType <= maxReleaseType
       file <- case files & take (fromIntegral numFiles) & nonEmpty of
         Nothing -> logWarn "no mod files found" $> Nothing
-        Just (f :| []) -> pure $ Just f
         Just files ->
           Just <$> selectViaTable files ["name", "release date", "type", "file size"] \f ->
             [ formattedVia C.green . toString $ f ^. #displayName,
