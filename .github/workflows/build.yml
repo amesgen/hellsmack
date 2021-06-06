@@ -3,7 +3,7 @@ on:
   release:
     types: [published]
 env:
-  GHC: '8.10.4'
+  GHC: '8.10.5'
 jobs:
   linux:
     runs-on: ubuntu-latest
