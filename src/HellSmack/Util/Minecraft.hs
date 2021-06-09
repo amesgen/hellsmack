@@ -17,12 +17,12 @@ module HellSmack.Util.Minecraft
   )
 where
 
-import Data.Aeson
 import Data.Conduit.Process.Typed
 import HellSmack.Logging
+import HellSmack.Util.Aeson
 import HellSmack.Util.Has
 import HellSmack.Util.Newtypes
-import Path.IO
+import HellSmack.Util.Path
 import System.Exit
 import System.FilePath (searchPathSeparator)
 import UnliftIO.Exception
@@ -31,6 +31,7 @@ import UnliftIO.IO.File
 -- $setup
 -- >>> import "hellsmack" Prelude
 -- >>> import Test.Tasty.HUnit
+-- >>> import Path
 
 data DirConfig = DirConfig
   { assetDir :: Path Abs Dir,

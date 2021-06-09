@@ -59,16 +59,14 @@ module HellSmack.Vanilla
 where
 
 import Codec.Archive.Zip
-import Data.Aeson
-import Data.Aeson.Lens
 import Data.Semigroup.Generic
 import Data.Text.Lens
 import Data.Time
+import Deriving.Aeson
 import HellSmack.Logging
 import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Yggdrasil
-import Path.IO
 import Text.Regex.Pcre2
 import UnliftIO.Exception
 
@@ -94,9 +92,7 @@ data Version = Version
     releaseTime :: UTCTime
   }
   deriving stock (Show, Eq, Generic)
-
-instance FromJSON Version where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "versionType" "type"] Version
 
 data VersionType = Release | Snapshot | OldAlpha | OldBeta
   deriving stock (Show, Eq, Generic, Enum, Bounded)
@@ -124,9 +120,7 @@ data VersionManifest = VersionManifest
     versionType :: VersionType
   }
   deriving stock (Show, Eq, Generic)
-
-instance FromJSON VersionManifest where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "versionType" "type"] VersionManifest
 
 data Arguments = Arguments
   { game :: [Argument],

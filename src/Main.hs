@@ -4,8 +4,6 @@
 module Main (main) where
 
 import Colourista.Pure qualified as C
-import Data.Aeson
-import Data.Aeson.Lens
 import Data.Text.Lens
 import Development.GitRev
 import HellSmack.Curse qualified as Curse
@@ -21,7 +19,6 @@ import HellSmack.Vanilla qualified as Vanilla
 import HellSmack.Yggdrasil
 import Main.Utf8 (withUtf8)
 import Options.Applicative qualified as OA
-import Path.IO
 import System.Exit (ExitCode (..))
 import UnliftIO.Exception
 
@@ -206,7 +203,7 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
       OA.completer . OA.listIOCompleter $
         (s <>) <$> handleAnyDeep (const $ pure []) do
           fp <- runReaderT fp =<< newDirConfig =<< defaultDataDir
-          f <$> do rethrow =<< eitherDecodeFileStrict (toFilePath fp)
+          f <$> do decodeJSON =<< readFileLBS (toFilePath fp)
     mcVersionCompleter = completerFromFile
       Vanilla.allVersionsManifestPath
       []

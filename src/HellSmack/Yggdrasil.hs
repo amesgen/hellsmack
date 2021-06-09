@@ -8,11 +8,9 @@ module HellSmack.Yggdrasil
   )
 where
 
-import Data.Aeson
 import HellSmack.Logging
 import HellSmack.Util
 import HellSmack.Yggdrasil.API
-import Path.IO
 import UnliftIO.Exception
 
 data MCAuth = MCAuth
@@ -35,11 +33,11 @@ authIso =
 loadAuthResponse :: MonadIO m => Path Abs File -> m AuthResponse
 loadAuthResponse authPath = liftIO do
   unlessM (doesFileExist authPath) $ throwString "no auth file found - try to log in"
-  eitherDecodeFileStrict (toFilePath authPath) >>= rethrow <&> (^. from authIso)
+  readFileLBS (toFilePath authPath) >>= decodeJSON <&> (^. from authIso)
 
 saveAuthResponse :: MonadIO m => Path Abs File -> AuthResponse -> m ()
 saveAuthResponse authPath ar =
-  liftIO $ encodeFile (toFilePath authPath) (ar ^. authIso)
+  writeFileLBS (toFilePath authPath) (encodeJSON $ ar ^. authIso)
 
 loadMCAuth :: (MonadUnliftIO m, MRHasAll r [Manager, Logger] m) => Path Abs File -> m MCAuth
 loadMCAuth authPath = do

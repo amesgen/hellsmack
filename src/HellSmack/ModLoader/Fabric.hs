@@ -6,7 +6,6 @@ module HellSmack.ModLoader.Fabric
   )
 where
 
-import Data.Aeson
 import Data.Time
 import HellSmack.Logging
 import HellSmack.ModLoader
@@ -39,9 +38,7 @@ data VersionManifest = VersionManifest
     libraries :: [Library]
   }
   deriving stock (Show, Generic)
-
-instance FromJSON VersionManifest where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "versionType" "type"] VersionManifest
 
 data Library = Library
   { name :: MavenId,

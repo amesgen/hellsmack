@@ -5,7 +5,6 @@ import Control.Monad.Catch as P (MonadThrow (..))
 import Data.Generics.Labels as P ()
 import Data.Generics.Wrapped as P
 import Data.These as P
-import Path as P hiding ((<.>))
 import Relude as P hiding (uncons, (??))
 import Relude.Extra.Tuple as P
 import UnliftIO as P (MonadUnliftIO (..))

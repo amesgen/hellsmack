@@ -3,7 +3,7 @@ module HellSmack.Util.IO
   )
 where
 
-import Path.IO
+import HellSmack.Util.Path
 import System.IO.Error (isDoesNotExistError)
 import UnliftIO.Exception
 

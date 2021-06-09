@@ -1,9 +1,11 @@
 module HellSmack.Util.Path
   ( makeSomeAbsolute,
+    module Reexport,
   )
 where
 
-import Path.IO
+import Path as Reexport hiding ((<.>))
+import Path.IO as Reexport
 
 makeSomeAbsolute ::
   (MonadIO m, AnyPath (Path Rel t), AbsPath (Path Rel t) ~ Path Abs t) =>

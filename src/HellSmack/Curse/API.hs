@@ -65,7 +65,6 @@ module HellSmack.Curse.API
 where
 
 import Conduit hiding (ReleaseType)
-import Data.Aeson
 import Data.Conduit.Serialization.Binary
 import Data.Time
 import HellSmack.Util
@@ -132,9 +131,7 @@ data Addon = Addon
     primaryLanguage :: String
   }
   deriving stock (Show, Eq, Generic)
-
-instance FromJSON Addon where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "isExperimental" .~ "isExperiemental"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "isExperimental" "isExperiemental"] Addon
 
 data AddonAttachment = AddonAttachment
   { id :: AddonAttachmentId,
@@ -270,9 +267,7 @@ data AddonFileDependency = AddonFileDependency
     dependencyType :: DependencyType
   }
   deriving stock (Show, Eq, Generic)
-
-instance FromJSON AddonFileDependency where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "dependencyType" .~ "type"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "dependencyType" "type"] AddonFileDependency
 
 newtype DependencyType = DependencyType Int
   deriving stock (Show, Eq, Generic)
@@ -395,7 +390,7 @@ sendJSON url m qs mb =
             GET -> []
             POST -> [("Content-Type", "application/json")]
         <&> setQueryString do qs <&> second Just
-    manager & httpLbs req <&> responseBody <&> eitherDecode' >>= rethrow
+    httpLbs req manager >>= decodeJSON . responseBody
   where
     addRequestHeaders hs req = req {requestHeaders = hs ++ requestHeaders req}
 

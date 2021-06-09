@@ -5,7 +5,6 @@ module HellSmack.Test.CurseTest where
 import HellSmack.Curse.API
 import HellSmack.Http
 import HellSmack.Util
-import Path.IO
 import Test.Tasty
 import Test.Tasty.HUnit
 

@@ -9,9 +9,6 @@ module HellSmack.ModLoader.Forge
 where
 
 import Codec.Archive.Zip
-import Data.Aeson
-import Data.Aeson.Lens
-import Data.Aeson.Types (parseEither)
 import Data.Conduit.Process.Typed
 import Data.Text.Lens
 import Data.Time
@@ -20,7 +17,6 @@ import HellSmack.ModLoader
 import HellSmack.Util
 import HellSmack.Vanilla qualified as V
 import HellSmack.Yggdrasil
-import Path.IO
 import System.IO.Temp
 import UnliftIO.Exception
 import UnliftIO.IO
@@ -70,9 +66,7 @@ data VersionManifest = VersionManifest
     libraries :: [Library]
   }
   deriving stock (Show, Generic)
-
-instance FromJSON VersionManifest where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "versionType" .~ "type"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "versionType" "type"] VersionManifest
 
 data Library = Post113Lib V.Library | Pre113Lib Pre113Library
   deriving stock (Show, Generic)
@@ -99,9 +93,7 @@ data InstallerManifest = InstallerManifest
     libraries :: [V.Library]
   }
   deriving stock (Show, Generic)
-
-instance FromJSON InstallerManifest where
-  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = identity & ix "dataEntries" .~ "data"}
+  deriving (FromJSON) via CustomJSONLabel '[Rename "dataEntries" "data"] InstallerManifest
 
 data DataEntry = DataEntry
   { client :: Text,
@@ -162,9 +154,8 @@ getVersionManifest fv = do
           False -> mkEntrySelector "install_profile.json"
   forgeFile <- reThrow $ parseRelFile [i|forge-${show fv}.json|]
   toPath <- siehs @DirConfig $ #manifestDir . to (</> forgeFile)
-  json :: Value <-
-    rethrow . eitherDecodeStrict' =<< extractFromInstaller fv toPath findVersionFile getEntry
-  vm <- fromJSON case (json ^? key "install" . key "minecraft", json ^? key "versionInfo") of
+  json :: Value <- decodeJSON . toLazy =<< extractFromInstaller fv toPath findVersionFile getEntry
+  vm <- decodeJSONValue case (json ^? key "install" . key "minecraft", json ^? key "versionInfo") of
     (Just mcVersion, Just viJson) -> viJson & _Object . at "inheritsFrom" ?~ mcVersion
     _ -> json
 
@@ -182,7 +173,6 @@ getVersionManifest fv = do
               )
   pure $ vm & #libraries %~ fixUrls
   where
-    fromJSON = rethrow . parseEither parseJSON
     filterByAId aid = filtered $ has $ #name . #artifactId . only aid
 
 forgeInstallerMavenId :: ForgeVersion -> MavenId
@@ -298,7 +288,7 @@ getInstallerManifest ::
 getInstallerManifest fv = do
   forgeFile <- reThrow $ parseRelFile [i|forge-${show fv}.json|]
   toPath <- siehs @DirConfig $ #manifestDir . to (</> forgeFile)
-  rethrow . eitherDecodeStrict'
+  decodeJSON . toLazy
     =<< extractFromInstaller fv toPath (mkEntrySelector "install_profile.json") getEntry
 
 preprocess ::
@@ -385,7 +375,7 @@ checkPreprocessingOutputs im expander = do
     catMaybes <$> forM outputs \(fp, sha1) -> do
       sha1 <- rethrow $ makeSHA1 sha1
       fp <- reThrow $ parseAbsFile $ toString fp
-      checkSha1 fp (Just sha1) <&> ($> fp) . leftToMaybe
+      checkSHA1 fp (Just sha1) <&> ($> fp) . leftToMaybe
   pure $ whenNotNull invalidPaths \(ip :| _) ->
     Left $ [i|invalid hash for processed file ${}|] $ toFilePath ip
 

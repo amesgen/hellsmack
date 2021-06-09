@@ -34,7 +34,6 @@ import BroadcastChan.Conduit qualified as BCC
 import Codec.Archive.Zip
 import Colourista.Pure qualified as C
 import Conduit hiding (ReleaseType)
-import Data.Aeson
 import Data.Align
 import Data.List (isInfixOf)
 import Data.List.Lens
@@ -43,7 +42,6 @@ import GHC.Conc (getNumCapabilities)
 import HellSmack.Curse.API
 import HellSmack.Logging
 import HellSmack.Util hiding (extension)
-import Path.IO
 import Relude.Extra.Group
 import Text.Layout.Table qualified as TL
 import Text.Layout.Table.Cell.Formatted qualified as TL
@@ -104,7 +102,7 @@ downloadFullModpack ModpackInstallOptions {..} = do
         logInfo "parsing modpack manifest"
         manifest :: ModpackManifest <- withArchive (toFilePath metaFile) do
           es <- mkEntrySelector "manifest.json"
-          getEntry es >>= rethrow . eitherDecode . toLazy
+          getEntry es >>= decodeJSON . toLazy
         let modpackVersion = C.formatWith [C.bold] $ manifest ^. #version
             mcVersion :: Text = C.formatWith [C.bold] $ show $ manifest ^. #minecraft . #version
         logInfo [i|modpack version: $modpackVersion, MC version: $mcVersion|]
@@ -522,12 +520,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
             Nothing -> lift $ selectAddonFile addon
           file & foldMapM \file -> (file :) <$> go file
 
-downloadAddonFile ::
-  (MonadIO m, MRHas r Manager m) =>
-  AddonFile ->
-  Path Abs Dir ->
-  ProgressOption ->
-  m ()
+downloadAddonFile :: HasManagerIO r m => AddonFile -> Path Abs Dir -> ProgressOption -> m ()
 downloadAddonFile AddonFile {..} outDir =
   downloadToFile downloadUrl (outDir </> fileName)
 

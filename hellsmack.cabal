@@ -50,6 +50,7 @@ library
     , http-client >= 0.7
     , network-uri >= 2.6
     , aeson >= 1.5
+    , deriving-aeson >= 0.2.7
     , lens-aeson >= 1.1
     , time >= 1.9
     , yasi >= 0.1.1
@@ -91,6 +92,7 @@ library
       HellSmack.Yggdrasil
       HellSmack.Yggdrasil.API
       HellSmack.Util
+      HellSmack.Util.Aeson
       HellSmack.Util.Download
       HellSmack.Util.Exception
       HellSmack.Util.Has

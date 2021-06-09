@@ -5,8 +5,8 @@ module HellSmack.Test.VanillaTest where
 import HellSmack.Http
 import HellSmack.Util.Download (forConcurrentlyNetwork)
 import HellSmack.Util.Minecraft
+import HellSmack.Util.Path
 import HellSmack.Vanilla
-import Path.IO
 import Test.Tasty
 import Test.Tasty.HUnit
 

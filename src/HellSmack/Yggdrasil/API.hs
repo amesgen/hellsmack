@@ -16,7 +16,6 @@ module HellSmack.Yggdrasil.API
   )
 where
 
-import Data.Aeson
 import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import Network.HTTP.Client
@@ -67,17 +66,17 @@ postJSON url a = do
       parseRequest [i|POST $baseUrl/$url|] <&> \req ->
         req
           { requestHeaders = ("Content-Type", "application/json") : requestHeaders req,
-            requestBody = RequestBodyLBS . encode $ a
+            requestBody = RequestBodyLBS $ encodeJSON a
           }
   mgr <- sieh @Manager
   res <- liftIO $ httpLbs req mgr
   let body = responseBody res
   case responseStatus res of
     Status sc _ | 200 <= sc && sc < 300 -> pure body
-    _ -> body & eitherDecode' @YggdrasilException & either throwString throwIO
+    _ -> body & decodeJSON @YggdrasilException >>= throwIO
 
 postJSON' :: (MonadIO m, MRHas r Manager m, ToJSON a) => Text -> a -> m AuthResponse
-postJSON' url a = postJSON url a <&> eitherDecode' >>= rethrow
+postJSON' url a = postJSON url a >>= decodeJSON
 
 clientToken :: Text
 clientToken = Meta.name

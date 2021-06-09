@@ -2,7 +2,7 @@ module HellSmack.Util.Download
   ( -- * SHA1
     SHA1 (unSHA1),
     makeSHA1,
-    checkSha1,
+    checkSHA1,
 
     -- * Downloads
     Manager,
@@ -22,19 +22,19 @@ module HellSmack.Util.Download
 where
 
 import Conduit
-import Control.Monad.Trans.Except
 import Crypto.Hash.SHA1 qualified as SHA1
-import Data.Aeson
 import Data.ByteString.Base16 qualified as B
 import Data.List (lookup)
 import Data.Text.Encoding.Base16 qualified as T
+import HellSmack.Util.Aeson
 import HellSmack.Util.Exception
 import HellSmack.Util.Has
+import HellSmack.Util.Path
 import HellSmack.Util.Terminal
 import Network.HTTP.Client
 import Network.URI (escapeURIString)
-import Path.IO
 import UnliftIO.Async
+import UnliftIO.Exception
 import UnliftIO.IO.File
 
 -- $setup
@@ -67,8 +67,8 @@ makeSHA1 = \case
   h | T.isValidBase16 h && T.length h == 40 -> pure . SHA1 $ T.toLower h
   h -> fail [i|not a SHA1 hex string: $h|]
 
-checkSha1 :: MonadIO m => Path Abs File -> Maybe SHA1 -> m (Either String ())
-checkSha1 fp sha1 =
+checkSHA1 :: MonadIO m => Path Abs File -> Maybe SHA1 -> m (Either String ())
+checkSHA1 fp sha1 =
   doesFileExist fp >>= \case
     True -> case sha1 of
       Just sha1 -> do
@@ -110,15 +110,13 @@ downloadMaybe ::
   Path Abs File ->
   ProgressOption ->
   -- | validate file
-  (Path Abs File -> m (Either String a)) ->
+  (Path Abs File -> IO a) ->
   m a
 downloadMaybe url path po (($ path) -> validate) = do
   unlessM (doesFileExist path) download
-  validate >>= \case
+  liftIO (tryAny validate) >>= \case
     Right a -> pure a
-    Left _ -> do
-      download
-      validate >>= rethrow
+    Left _ -> download *> liftIO validate
   where
     download = do
       ensureDir $ parent path
@@ -134,12 +132,12 @@ downloadMaybeHash ::
   Maybe SHA1 ->
   ProgressOption ->
   -- | validate file
-  (Path Abs File -> m (Either String a)) ->
+  (Path Abs File -> IO a) ->
   m a
 downloadMaybeHash url path sha1 po validate =
-  downloadMaybe url path po \fp -> runExceptT do
-    ExceptT $ checkSha1 fp sha1
-    ExceptT $ validate fp
+  downloadMaybe url path po \fp -> do
+    checkSHA1 fp sha1 >>= rethrow
+    validate fp
 
 downloadHash ::
   HasManagerIO r m =>
@@ -152,7 +150,7 @@ downloadHash ::
   ProgressOption ->
   m ()
 downloadHash url path sha1 po =
-  downloadMaybeHash url path sha1 po $ const $ pure pass
+  downloadMaybeHash url path sha1 po (const pass)
 
 downloadMaybeJson ::
   (HasManagerIO r m, FromJSON a) =>
@@ -166,9 +164,8 @@ downloadMaybeJson ::
   (a -> Either String b) ->
   m b
 downloadMaybeJson url path sha1 validate =
-  downloadMaybeHash url path sha1 HideProgress \fp -> runExceptT do
-    a <- either throwE pure . eitherDecode' =<< liftIO do readFileLBS (toFilePath fp)
-    hoistEither $ validate a
+  downloadMaybeHash url path sha1 HideProgress \fp ->
+    readFileLBS (toFilePath fp) >>= decodeJSON >>= rethrow . validate
 
 downloadCachedJson ::
   (HasManagerIO r m, FromJSON a) =>
@@ -186,7 +183,7 @@ downloadJson :: (HasManagerIO r m, FromJSON a) => Text -> m a
 downloadJson url =
   sieh >>= \mgr -> liftIO do
     req <- parseUrlThrow . toString $ url
-    rethrow . eitherDecode' . responseBody =<< httpLbs req mgr
+    decodeJSON . responseBody =<< httpLbs req mgr
 
 -- use some heuristic?
 downloadParallelism :: Int
