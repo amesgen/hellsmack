@@ -6,7 +6,7 @@ Some Minecraft stuff as a CLI:
 
  - No GUI
  - uNiX pHiLoSoPhY
- - Does work offline if all necessary have been downloaded previously
+ - Does work offline if all necessary files have been downloaded previously
  - Launch Minecraft
     - client and server
     - works at least for recent-ish versions (>= 1.7)
@@ -125,3 +125,6 @@ bash build.sh
 ```
 The output binary is in `artifacts`.
 
+## Acknowledgements
+
+There are a myriad of resources about Minecraft launchers out here, but I found [wiki.vg](https://wiki.vg) particularly helpful.
