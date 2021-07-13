@@ -1,4 +1,6 @@
 packages: .
 
-with-compiler: ghc-8.10.5
-index-state: 2021-06-09T12:48:24Z
+with-compiler: ghc-9.0.1
+index-state: 2021-07-13T13:50:04Z
+
+allow-newer: with-utf8:base, table-layout:base, broadcast-chan:base, broadcast-chan-conduit:base
