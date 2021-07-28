@@ -38,6 +38,7 @@ library
 
   build-depends:
       relude >= 1.0
+    , split >= 0.2
     , these >= 1.1
     , semialign >= 1.2
     , transformers >= 0.5

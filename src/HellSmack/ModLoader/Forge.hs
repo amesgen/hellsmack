@@ -1,6 +1,7 @@
 module HellSmack.ModLoader.Forge
   ( ForgeVersion (..),
     isPre113,
+    isJigsaw,
     allVersionsManifestPath,
     findVersion,
     getVersionManifest,
@@ -9,12 +10,17 @@ module HellSmack.ModLoader.Forge
 where
 
 import Codec.Archive.Zip
+import Control.Lens.Unsound (adjoin)
 import Data.Conduit.Process.Typed
+import Data.List (stripPrefix)
+import Data.List.Lens
+import Data.List.Split (splitOn)
 import Data.Text.Lens
 import Data.Time
 import HellSmack.Logging
 import HellSmack.ModLoader
 import HellSmack.Util
+import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Vanilla qualified as V
 import HellSmack.Yggdrasil
 import System.IO.Temp
@@ -32,27 +38,30 @@ newtype ForgeVersion = ForgeVersion {unForgeVersion :: Text}
 
 -- $
 -- >>> isPre113 (ForgeVersion "1.16.4-35.1.28")
--- Right False
+-- False
 -- >>> isPre113 (ForgeVersion "1.15-29.0.1")
--- Right False
+-- False
 -- >>> isPre113 (ForgeVersion "1.12.1-14.22.1.2480")
--- Right True
+-- True
 -- >>> isPre113 (ForgeVersion "1.4.5-6.4.2.447")
--- Right True
+-- True
 -- >>> isPre113 (ForgeVersion "1.7.10-10.13.2.1352-1.7.10")
--- Right True
+-- True
 
-isPre113 :: ForgeVersion -> Either String Bool
-isPre113 (ForgeVersion v) = maybeToRight "invalid forge version format" case v
+mcMajorMinor :: MonadFail m => ForgeVersion -> m (Int, Int)
+mcMajorMinor (ForgeVersion v) = case v
   & T.takeWhile (/= '-')
   & T.splitOn "."
   & take 2
   & each %%~ readMaybe . toString of
-  Just [maj, min] -> pure $ (maj, min) < (1 :: Int, 13)
-  _ -> Nothing
+  Just [maj, min] -> pure (maj, min)
+  _ -> fail [i|invalid forge version format: $v|]
 
-isPre113M :: MonadIO m => ForgeVersion -> m Bool
-isPre113M = rethrow . isPre113
+isPre113 :: MonadFail m => ForgeVersion -> m Bool
+isPre113 = fmap (< (1, 13)) . mcMajorMinor
+
+isJigsaw :: MonadFail m => ForgeVersion -> m Bool
+isJigsaw = fmap (>= (1, 17)) . mcMajorMinor
 
 data VersionManifest = VersionManifest
   { id :: ForgeVersion,
@@ -87,8 +96,7 @@ data Pre113Library = Pre113Library
   deriving anyclass (FromJSON)
 
 data InstallerManifest = InstallerManifest
-  { path :: MavenId,
-    dataEntries :: Map Text DataEntry,
+  { dataEntries :: Map Text DataEntry,
     processors :: [Processor],
     libraries :: [V.Library]
   }
@@ -106,7 +114,8 @@ data Processor = Processor
   { jar :: MavenId,
     classpath :: [MavenId],
     args :: [Text],
-    outputs :: Maybe (Map Text Text)
+    outputs :: Maybe (Map Text Text),
+    sides :: Maybe [MCSide]
   }
   deriving stock (Show, Generic)
   deriving anyclass (FromJSON)
@@ -146,7 +155,7 @@ getVersionManifest ::
   ForgeVersion ->
   m VersionManifest
 getVersionManifest fv = do
-  isPre113 <- isPre113M fv
+  isPre113 <- rethrow $ isPre113 fv
   let findVersionFile = do
         es <- mkEntrySelector "version.json"
         doesEntryExist es >>= \case
@@ -291,6 +300,9 @@ getInstallerManifest fv = do
   decodeJSON . toLazy
     =<< extractFromInstaller fv toPath (mkEntrySelector "install_profile.json") getEntry
 
+isServerOnlyProcessor :: Processor -> Bool
+isServerOnlyProcessor p = MCServer `elem` do p ^.. #sides . #_Just . each
+
 preprocess ::
   (MonadUnliftIO m, MRHasAll r '[MCSide, DirConfig, Manager, Logger, JavaConfig] m) =>
   ForgeVersion ->
@@ -328,16 +340,23 @@ preprocess fv vvm im = do
 
       logInfo "running preprocessor steps"
       tmpDir <- liftIO $ getCanonicalTemporaryDirectory >>= flip createTempDirectory "forge-preprocess"
-      mainJarPath <- reThrow $ toText . toFilePath <$> V.mainJarPath vvm
+      extraDataEntries <-
+        fmap M.fromList . (each . _2 %%~ identity) $
+          [ ("{MINECRAFT_JAR}", reThrow $ toText . toFilePath <$> V.mainJarPath vvm),
+            ("{SIDE}", mcSideName)
+          ]
       dataMap <-
-        (dataMap <>) . (at "{MINECRAFT_JAR}" ?~ mainJarPath) <$> do
+        M.union extraDataEntries . M.union dataMap <$> do
           excess & each %%~ \(toString . T.drop 1 -> fp) -> do
             fp <- reThrow $ parseRelFile fp
             newFp <- liftIO $ parseAbsFile =<< emptyTempFile tmpDir "embedded"
             extractFromInstaller' fv fp newFp
             pure $ toText . toFilePath $ newFp
-      stepWise (withGenericProgress (length $ im ^. #processors)) \step ->
-        iforOf_ (#processors . ifolded) im \ipro pro -> step do
+      let preprocessors =
+            -- filter out the new (in forge 1.17.1) preprocessor which copies server scripts around
+            im ^.. #processors . each . filtered (not . isServerOnlyProcessor)
+      stepWise (withGenericProgress (length preprocessors)) \step ->
+        ifor_ preprocessors \ipro pro -> step do
           jarPath <- reThrow $ libraryPath $ pro ^. #jar
           classpath <-
             reThrow $ joinClasspath . (jarPath :) <$> traverse libraryPath (pro ^. #classpath)
@@ -356,9 +375,9 @@ preprocess fv vvm im = do
                     & setStdin nullStream
                     & setStdout handle
                     & setStderr handle
-            runProcess p >>= traverseOf #_ExitFailure \_ -> do
-              logInfo [i|preprocessing log dir: $tmpDir|]
-              throwString [i|preprocessing ${show ipro} failed!|]
+            logTrace [i|raw forge preprocessor process: ${show p}|]
+            runProcess p >>= #_ExitFailure \_ ->
+              throwString [i|preprocessing ${show ipro} failed! log dir: $tmpDir|]
       removeDirRecur =<< reThrow (parseAbsDir tmpDir)
       checkPreprocessingOutputs im (expandVia dataMap) >>= rethrow
       logInfo "finished preprocessing"
@@ -408,7 +427,7 @@ launch fv = do
   fvm <- getVersionManifest fv
   libs <- reThrow $ getLibraries fvm
   vvm <- V.getVersionManifest $ fvm ^. #inheritsFrom
-  isPre113 <- isPre113M fv
+  isPre113 <- rethrow $ isPre113 fv
   unless isPre113 do
     im <- getInstallerManifest fv
     preprocess fv vvm im
@@ -419,19 +438,44 @@ launch fv = do
       when isPre113 do
         logInfo "downloading main jar"
         V.downloadMainJar vvm
-      launcherJar <-
-        libs ^? each . #name . filtered (has $ #artifactId . only "forge")
-          & rethrow . maybeToRight "launcher library not found" >>= reThrow . libraryPath
-      jarManifest <- readJarManifest launcherJar
-      let expectEntry (k :: String) = rethrow . maybeToRight [i|$k not found|]
-      mainClass <- expectEntry "main class" $ jarManifest ^? ix "Main-Class" . unpacked
-      otherLibs <- do
-        raw <- expectEntry "classpath" $ jarManifest ^? ix "Class-Path" . to (T.splitOn " ")
-        libDir <- siehs @DirConfig #libraryDir
-        raw & each %%~ \case
-          (T.stripPrefix "libraries/" -> Just p) -> do
-            p <- reThrow $ parseRelFile $ toString p
-            pure $ libDir </> p
-          p | "minecraft_server." `T.isPrefixOf` p -> reThrow $ V.mainJarPath vvm
-          p -> throwString [i|invalid classpath entry: $p|]
-      runMCJava $ ["-cp", joinClasspath $ launcherJar : otherLibs] ++ [mainClass]
+      rethrow (isJigsaw fv) >>= \case
+        True -> do
+          argsFile <- reThrow $ parseRelFile [i|forge-args-${show fv}.txt|]
+          toPath <- siehs @DirConfig $ #manifestDir . to (</> argsFile)
+          libraryDir <- toFilePath <$> siehs @DirConfig #libraryDir
+          let archiveArgsSelector = mkEntrySelector case Meta.os of
+                Meta.Windows -> "data/win_args.txt"
+                _ -> "data/unix_args.txt"
+              patchLibraryDir =
+                ( prefixed "-p "
+                    `adjoin` prefixed "-DlegacyClassPath="
+                    `adjoin` prefixed "-DlibraryDirectory="
+                )
+                  %~ \case
+                    "libraries" -> libraryDir
+                    classpath ->
+                      intercalate classpathSeparator
+                        . fmap (libraryDir <>)
+                        . mapMaybe (stripPrefix "libraries/")
+                        . splitOn classpathSeparator
+                        $ classpath
+              extractArgs = toListOf $ lined . to patchLibraryDir . worded
+          args <- extractArgs . decodeUtf8 <$> extractFromInstaller fv toPath archiveArgsSelector getEntry
+          runMCJava args
+        False -> do
+          launcherJar <-
+            libs ^? each . #name . filtered (has $ #artifactId . only "forge")
+              & rethrow . maybeToRight "launcher library not found" >>= reThrow . libraryPath
+          jarManifest <- readJarManifest launcherJar
+          let expectEntry (k :: String) = rethrow . maybeToRight [i|$k not found|]
+          mainClass <- expectEntry "main class" $ jarManifest ^? ix "Main-Class" . unpacked
+          otherLibs <- do
+            raw <- expectEntry "classpath" $ jarManifest ^? ix "Class-Path" . to (T.splitOn " ")
+            libDir <- siehs @DirConfig #libraryDir
+            raw & each %%~ \case
+              (T.stripPrefix "libraries/" -> Just p) -> do
+                p <- reThrow $ parseRelFile $ toString p
+                pure $ libDir </> p
+              p | "minecraft_server." `T.isPrefixOf` p -> reThrow $ V.mainJarPath vvm
+              p -> throwString [i|invalid classpath entry: $p|]
+          runMCJava $ ["-cp", joinClasspath $ launcherJar : otherLibs] ++ [mainClass]

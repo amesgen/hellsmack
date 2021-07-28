@@ -11,6 +11,7 @@ module HellSmack.Util.Minecraft
     mavenIdUrl,
     mavenIdPath,
     libraryPath,
+    classpathSeparator,
     joinClasspath,
     JavaConfig (..),
     runMCJava,
@@ -150,6 +151,13 @@ libraryPath mi = (</>) <$> siehs @DirConfig #libraryDir <*> mavenIdPath mi
 data MCSide = MCClient | MCServer
   deriving stock (Show, Ord, Eq, Generic, Enum, Bounded)
 
+instance FromJSON MCSide where
+  parseJSON =
+    parseJSON @Text >=> \case
+      "client" -> pure MCClient
+      "server" -> pure MCServer
+      s -> fail [i|invalid MC side: $s|]
+
 mcSideName :: MRHas r MCSide m => m Text
 mcSideName =
   sieh <&> \case
@@ -161,8 +169,11 @@ newtype MCVersion = MCVersion {unMCVersion :: Text}
   deriving newtype (Ord, Eq, FromJSON)
   deriving (Show) via (ShowWithoutQuotes Text)
 
-joinClasspath :: [Path Abs File] -> String
-joinClasspath = fold . intersperse [searchPathSeparator] . fmap toFilePath
+classpathSeparator :: String
+classpathSeparator = [searchPathSeparator]
+
+joinClasspath :: [Path Abs File] -> FilePath
+joinClasspath = fold . intersperse classpathSeparator . fmap toFilePath
 
 data JavaConfig = JavaConfig
   { javaBin :: SomeBase File,
@@ -176,7 +187,7 @@ runMCJava jvmArgs = do
   gdir <- sieh <&> toFilePath . unGameDir
   let p = proc (fromSomeFile javaBin) (extraJvmArgs ++ jvmArgs) & setWorkingDir gdir
   logInfo "launching minecraft"
-  logTrace [i|raw command: ${show p}|]
+  logTrace [i|raw MC command: ${show p}|]
   runProcess p >>= \case
     ExitSuccess -> logInfo "minecraft finished successfully"
     _ -> throwString "minecraft crashed :("

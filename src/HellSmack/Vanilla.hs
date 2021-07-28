@@ -477,7 +477,7 @@ processArguments vm assets classpath = do
       natDir <- reThrow $ toFilePath <$> versionNativeDir vm
       pure (game, ["-cp", classpath, [i|-Djava.library.path=$natDir|]])
     replaceInputs =
-      packed . [_regex|\$\{(?<prop>[\S]+)\}|] %%~ \cap ->
+      packed . [_regex|\$\{(?<prop>[^\}]+)\}|] %%~ \cap ->
         cap & _capture @0 %%~ const case cap ^. _capture @"prop" of
           "classpath" -> pure $ toText classpath
           "natives_directory" -> fromPath $ versionNativeDir vm
@@ -497,6 +497,8 @@ processArguments vm assets classpath = do
             _ -> "unknown"
           "user_type" -> pure "mojang" -- NOTE legacy?
           "user_properties" -> pure "{}"
+          "library_directory" -> fromPath $ siehs @DirConfig #libraryDir
+          "classpath_separator" -> pure $ toText classpathSeparator
           input -> throwString [i|invalid input '${input}' in argument|]
     fromPath = reThrow . fmap (toText . toFilePath)
 
