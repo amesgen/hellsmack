@@ -120,6 +120,8 @@ library
     cpp-options: -DARCH_X86
   if arch(x86_64)
     cpp-options: -DARCH_X86_64
+  if arch(aarch64)
+    cpp-options: -DARCH_AARCH64
 
 common exec
   ghc-options:

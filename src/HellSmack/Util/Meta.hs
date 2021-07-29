@@ -34,7 +34,7 @@ os = OSX
 os = Windows
 #endif
 
-data Arch = X86 | X86_64
+data Arch = X86 | X86_64 | AARCH64
   deriving stock (Show, Generic)
 
 arch :: Arch
@@ -44,4 +44,7 @@ arch = X86
 #endif
 #ifdef ARCH_X86_64
 arch = X86_64
+#endif
+#ifdef ARCH_AARCH64
+arch = AARCH64
 #endif

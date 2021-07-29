@@ -359,7 +359,9 @@ currentOSName = case Meta.os of
 currentArchName :: Text
 currentArchName = case Meta.arch of
   Meta.X86 -> "x86"
-  Meta.X86_64 -> "amd64" -- NOTE confirm
+  -- NOTE these are not used currently
+  Meta.X86_64 -> "amd64"
+  Meta.AARCH64 -> "aarch64"
 
 processRules :: [Rule] -> Action
 processRules rules
