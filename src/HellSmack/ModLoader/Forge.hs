@@ -341,7 +341,7 @@ preprocess fv vvm im = do
       logInfo "running preprocessor steps"
       tmpDir <- liftIO $ getCanonicalTemporaryDirectory >>= flip createTempDirectory "forge-preprocess"
       extraDataEntries <-
-        fmap M.fromList . (each . _2 %%~ identity) $
+        sequence . M.fromList $
           [ ("{MINECRAFT_JAR}", reThrow $ toText . toFilePath <$> V.mainJarPath vvm),
             ("{SIDE}", mcSideName)
           ]
@@ -389,12 +389,18 @@ preprocess fv vvm im = do
 checkPreprocessingOutputs ::
   MonadIO m => InstallerManifest -> (Text -> Text) -> m (Either String ())
 checkPreprocessingOutputs im expander = do
-  let outputs = im ^@.. #processors . each . #outputs . _Just . ifolded & each . each %~ expander
+  let regularOutputs =
+        im ^@.. #processors . each . #outputs . _Just . ifolded
+          & each %~ (_2 %~ Just) . (both %~ expander)
+      -- since 1.17.1, the last preprocessing step does no longer declare its output explicitly
+      -- we could also parse the --output argument
+      extraOutputs = [(expander "{PATCHED}", Nothing)]
+      outputs = regularOutputs <> extraOutputs
   invalidPaths <-
     catMaybes <$> forM outputs \(fp, sha1) -> do
-      sha1 <- rethrow $ makeSHA1 sha1
+      sha1 <- rethrow $ traverse makeSHA1 sha1
       fp <- reThrow $ parseAbsFile $ toString fp
-      checkSHA1 fp (Just sha1) <&> ($> fp) . leftToMaybe
+      checkSHA1 fp sha1 <&> ($> fp) . leftToMaybe
   pure $ whenNotNull invalidPaths \(ip :| _) ->
     Left $ [i|invalid hash for processed file ${}|] $ toFilePath ip
 
