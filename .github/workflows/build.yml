@@ -53,6 +53,10 @@ jobs:
         name: Setup Cabal native lib dirs
         run: |
           cabal user-config update -a "extra-include-dirs: C:/msys64/mingw64/include" -a "extra-lib-dirs: C:/msys64/mingw64/lib"
+      - if: runner.os == 'macOS'
+        name: Uninstall CLT
+        run: |
+          sudo rm -rf /Library/Developer/CommandLineTools
       - name: Build binary
         run: bash build.sh
       - uses: actions/upload-release-asset@v1
