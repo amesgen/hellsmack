@@ -33,7 +33,6 @@ test_sanity = do
     Just fabricModsC <- pure $ cs ^. at fabricModsCategory
     fabricModsC ^. #id @?= fabricModsCategory
     fabricModsC ^. #name @?= "Fabric"
-    fabricModsC ^. #slug @?= "fabric"
 
     step "API calls"
     addon <- run $ getAddon ocId
