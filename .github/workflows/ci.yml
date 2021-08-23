@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: mrkkrp/ormolu-action@v3
         with:
-          extra-args: -o-XTypeApplications -o-XPatternSynonyms -o-XBangPatterns -o-XImportQualifiedPost
+          extra-args: -o-XTypeApplications -o-XPatternSynonyms -o-XBangPatterns -o-XImportQualifiedPost -o-XTemplateHaskell
   test:
     runs-on: ubuntu-latest
     steps:
