@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: mrkkrp/ormolu-action@v2
+      - uses: mrkkrp/ormolu-action@v3
         with:
           extra-args: -o-XTypeApplications -o-XPatternSynonyms -o-XBangPatterns -o-XImportQualifiedPost
   test:
