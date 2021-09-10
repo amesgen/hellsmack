@@ -10,14 +10,11 @@ module HellSmack.Util.Meta
   )
 where
 
-import Data.Version (showVersion)
-import Paths_hellsmack qualified as P
-
 name :: Text
 name = "hellsmack"
 
 version :: Text
-version = toText . showVersion $ P.version
+version = CURRENT_PACKAGE_VERSION
 
 data OS = Linux | Windows | OSX
   deriving stock (Show, Generic)

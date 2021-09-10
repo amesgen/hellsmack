@@ -106,8 +106,6 @@ library
       HellSmack.Util.Terminal
       HellSmack.Http
       Main
-  other-modules: Paths_hellsmack
-  autogen-modules: Paths_hellsmack
   hs-source-dirs: src
 
   if os(linux)
