@@ -429,8 +429,9 @@ mainJarPath ::
 mainJarPath vm = do
   side <- mcSideName
   versionDir <- siehs @DirConfig #versionDir
-  vmid <- parseRelDir $ vm ^. #id . to unMCVersion . unpacked
-  sideJar <- parseRelFile [i|$side.jar|]
+  let mcVersion = vm ^. #id . to unMCVersion . unpacked
+  vmid <- parseRelDir mcVersion
+  sideJar <- parseRelFile [i|$mcVersion-$side.jar|]
   pure $ versionDir </> vmid </> sideJar
 
 downloadMainJar ::
