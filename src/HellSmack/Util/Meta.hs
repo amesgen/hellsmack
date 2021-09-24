@@ -20,7 +20,6 @@ data OS = Linux | Windows | OSX
   deriving stock (Show, Generic)
 
 os :: OS
-
 #ifdef OS_LINUX
 os = Linux
 #endif
@@ -35,7 +34,6 @@ data Arch = X86 | X86_64 | AARCH64
   deriving stock (Show, Generic)
 
 arch :: Arch
-
 #ifdef ARCH_X86
 arch = X86
 #endif
