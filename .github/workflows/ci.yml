@@ -7,6 +7,8 @@ on:
     types:
       - opened
       - synchronize
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
 jobs:
   ormolu:
     runs-on: ubuntu-latest
@@ -17,10 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: haskell/actions/setup@v1
-        id: setup-haskell
+      - uses: cachix/install-nix-action@v14
         with:
-          ghc-version: '8.10.7'
+          extra_nix_config: |
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+            substituters = https://cache.nixos.org https://hydra.iohk.io
+      - uses: cachix/cachix-action@v10
+        with:
+          name: hellsmack
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Setup cabal-docspec
         run: |
           CABAL_DIR=~/.cabal/bin
@@ -33,20 +40,7 @@ jobs:
         env:
           CABAL_DOCSPEC_VERSION: '0.0.0.20210111'
 
-      - name: Freeze build
-        run: cabal freeze
-      - uses: actions/cache@v2
-        with:
-          path: ${{ steps.setup-haskell.outputs.cabal-store }}
-          key: cabal-${{ hashFiles('cabal.project.freeze') }}
-          restore-keys: |
-            cabal-
-
-      - name: Build dependencies
-        run: cabal build --enable-tests --only-dependencies
-      - name: Build
-        run: cabal build
-      - name: Run tests
-        run: cabal test --test-show-details=direct
-      - name: Run cabal-docspec
-        run: ./docspec.sh
+      - name: Build and test
+        run: nix-build --option sandbox false
+      - name: Run docspec
+        run: nix-shell --command 'cabal build --enable-tests && ./docspec.sh'

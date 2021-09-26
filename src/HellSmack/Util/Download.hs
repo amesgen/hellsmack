@@ -23,8 +23,10 @@ where
 
 import Conduit
 import Crypto.Hash.SHA1 qualified as SHA1
+import Data.ByteString qualified as B
 import Data.ByteString.Base16 qualified as B
 import Data.List (lookup)
+import Data.Text qualified as T
 import Data.Text.Encoding.Base16 qualified as T
 import HellSmack.Util.Aeson
 import HellSmack.Util.Exception

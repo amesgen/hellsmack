@@ -2,6 +2,7 @@
 
 module HellSmack.Test.CurseTest where
 
+import Data.Map.Strict qualified as M
 import HellSmack.Curse.API
 import HellSmack.Http
 import HellSmack.Util

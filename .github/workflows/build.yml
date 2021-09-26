@@ -1,69 +1,63 @@
-name: Build
+name: Build binaries
 on:
   release:
     types: [published]
+defaults:
+  run:
+    shell: bash
 env:
-  GHC: '8.10.7'
+  NIXPKGS_ALLOW_UNFREE: 1
 jobs:
-  linux:
-    runs-on: ubuntu-latest
-    container:
-      image: alpine:latest
-    steps:
-      - name: Setup
-        run: |
-          apk update
-          apk add \
-            git sudo curl \
-            gcc g++ make ncurses-dev \
-            gmp-dev binutils-gold \
-            openssl-dev openssl-libs-static \
-            bzip2 bzip2-dev bzip2-static \
-            zlib zlib-dev zlib-static \
-            ncurses ncurses-dev ncurses-static \
-            bash
-      - uses: haskell/actions/setup@v1
-        with:
-          ghc-version: ${{ env.GHC }}
-      - uses: actions/checkout@v2
-      - name: Build static binary
-        run: bash build.sh
-        env:
-          STATIC_BUILD: HELLYEAH
-      - uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: artifacts/hellsmack
-          asset_name: hellsmack-${{ runner.os }}
-          asset_content_type: application/octet-stream
-  nonlinux:
+  build:
     strategy:
       fail-fast: false
       matrix:
-        os: [macOS-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            targetOs: Linux
+          - os: macOS-latest
+            targetOs: macOS
+          - os: ubuntu-latest
+            targetOs: Windows
+    name: Build binary for ${{ matrix.targetOs }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-      - uses: haskell/actions/setup@v1
+      - uses: cachix/install-nix-action@v14
         with:
-          ghc-version: ${{ env.GHC }}
-      - if: runner.os == 'Windows'
-        name: Setup Cabal native lib dirs
-        run: |
-          cabal user-config update -a "extra-include-dirs: C:/msys64/mingw64/include" -a "extra-lib-dirs: C:/msys64/mingw64/lib"
-      - if: runner.os == 'macOS'
-        name: Uninstall CLT
-        run: |
-          sudo rm -rf /Library/Developer/CommandLineTools
+          extra_nix_config: |
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+            substituters = https://cache.nixos.org https://hydra.iohk.io
       - name: Build binary
-        run: bash build.sh
+        run: nix-build -A binaries.${{ matrix.targetOS }}
+      - name: Prepare upload
+        run: |
+          cd result/bin
+          7z a -l ${{ github.workspace }}/hellsmack.zip .
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: artifacts/hellsmack
-          asset_name: hellsmack-${{ runner.os }}
-          asset_content_type: application/octet-stream
+          asset_path: hellsmack.zip
+          asset_name: hellsmack-${{ matrix.targetOs }}.zip
+          asset_content_type: application/zip
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    name: Test built binaries
+    runs-on: ${{ matrix.os }}
+    needs: build
+    steps:
+      - name: Download and extract binary
+        run: |
+          curl -sL https://github.com/${{ github.repository }}/releases/download/${{ github.event.release.tag_name }}/hellsmack-${{ runner.os }}.zip > hellsmack.zip
+          7z e hellsmack.zip
+      - name: Basic functionality tests
+        run: |
+          ./hellsmack --version

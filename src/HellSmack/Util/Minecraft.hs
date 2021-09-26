@@ -19,6 +19,7 @@ module HellSmack.Util.Minecraft
 where
 
 import Data.Conduit.Process.Typed
+import Data.Text qualified as T
 import HellSmack.Logging
 import HellSmack.Util.Aeson
 import HellSmack.Util.Has
