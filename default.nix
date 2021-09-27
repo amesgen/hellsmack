@@ -15,6 +15,7 @@ let
         packages.hellsmack.components.library.build-tools = pkgs.lib.mkForce
           [ pkgs.buildPackages.buildPackages.gitReallyMinimal ];
         packages.hellsmack.components.library.extraSrcFiles = [ ".git/**/*" ];
+        packages.hellsmack.writeHieFiles = true;
       })
     ];
   };
@@ -27,10 +28,22 @@ in {
     tools = {
       cabal = "latest";
       ghcid = "latest";
+      weeder = "latest";
     };
     withHoogle = false;
     exactDeps = true;
   };
+  weeder = pkgs.runCommand "hellsmack-weeder" {
+    buildInputs = [ (hsPkgs.tool "weeder" "latest") ];
+  } ''
+    mkdir -p $out
+    export XDG_CACHE_HOME=$TMPDIR/cache
+    weeder --config ${./weeder.dhall} \
+      --hie-directory ${hellsmack.components.library.hie} \
+      --hie-directory ${hellsmack.components.tests.tasty.hie} \
+      | tee $out/weeder-log.txt || true
+    diff ${./test/weeder-log.txt} $out/weeder-log.txt
+  '';
   binaries = {
     Linux =
       hsPkgs.projectCross.musl64.hsPkgs.hellsmack.components.exes.hellsmack;

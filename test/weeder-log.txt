@@ -1,0 +1,5 @@
+src/HellSmack/Curse/API.hs:341: catchAllSection
+src/HellSmack/Curse/API.hs:462: getGames
+src/HellSmack/Curse/API.hs:365: optionalDependencyType
+src/HellSmack/Vanilla.hs:298: assetUrl
+src/HellSmack/Yggdrasil/API.hs:128: signout
