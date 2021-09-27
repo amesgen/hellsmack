@@ -119,11 +119,25 @@ hellsmack --fish-completion-script /path/to/hellsmack
 
 ## Building
 
-Install suitable versions of GHC and Cabal (e.g. via [ghcup](https://gitlab.haskell.org/haskell/ghcup-hs/)) and run (optionally set `STATIC_BUILD`)
+This is an ordinary [Cabal](https://www.haskell.org/cabal/) project, so you can e.g. build the main executable via
 ```bash
-bash build.sh
+cabal build exe:hellsmack
 ```
-The output binary is in `artifacts`.
+
+Alternatively, you can use [haskell.nix](https://input-output-hk.github.io/haskell.nix) (make sure to configure the binary caches!).
+
+Build a fully static Linux binary:
+```bash
+nix-build -A binaries.Linux
+```
+Cross-compile to Windows:
+```bash
+nix-build -A binaries.Windows
+```
+Build a self-contained macOS binary:
+```
+nix-build -A binaries.macOS
+```
 
 ## Acknowledgements
 

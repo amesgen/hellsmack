@@ -15,6 +15,8 @@ import Data.Conduit.Process.Typed
 import Data.List (stripPrefix)
 import Data.List.Lens
 import Data.List.Split (splitOn)
+import Data.Map.Strict qualified as M
+import Data.Text qualified as T
 import Data.Text.Lens
 import Data.Time
 import HellSmack.Logging

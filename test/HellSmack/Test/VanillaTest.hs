@@ -2,6 +2,8 @@
 
 module HellSmack.Test.VanillaTest where
 
+import Data.Map.Strict qualified as M
+import Data.Set qualified as S
 import HellSmack.Http
 import HellSmack.Util.Download (forConcurrentlyNetwork)
 import HellSmack.Util.Minecraft

@@ -66,6 +66,7 @@ where
 
 import Conduit hiding (ReleaseType)
 import Data.Conduit.Serialization.Binary
+import Data.Text qualified as T
 import Data.Time
 import HellSmack.Util
 import Network.HTTP.Client

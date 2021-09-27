@@ -25,6 +25,7 @@ module HellSmack.Util.Terminal
 where
 
 import Colourista.Pure qualified as C
+import Data.Text qualified as T
 import Data.Time
 import Data.Time.Clock.System
 import Data.Time.Clock.TAI

@@ -6,6 +6,7 @@ module HellSmack.ModLoader.Fabric
   )
 where
 
+import Data.ByteString qualified as B
 import Data.Time
 import HellSmack.Logging
 import HellSmack.ModLoader

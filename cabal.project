@@ -2,3 +2,5 @@ packages: .
 
 with-compiler: ghc-8.10.7
 index-state: 2021-09-08T00:00:00Z
+
+constraints: zip +disable-bzip2

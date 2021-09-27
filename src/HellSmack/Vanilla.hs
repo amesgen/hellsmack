@@ -59,7 +59,9 @@ module HellSmack.Vanilla
 where
 
 import Codec.Archive.Zip
+import Data.Map.Strict qualified as M
 import Data.Semigroup.Generic
+import Data.Text qualified as T
 import Data.Text.Lens
 import Data.Time
 import Deriving.Aeson

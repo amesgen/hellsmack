@@ -1,3 +1,1 @@
-{ roots = [ "^Main.main\$", "^Paths_\\.*", "^HellSmack\\.Test\\..*" ]
-, type-class-roots = False
-}
+{ roots = [ "^Main.main\$", "^Paths_\\.*" ], type-class-roots = False }
