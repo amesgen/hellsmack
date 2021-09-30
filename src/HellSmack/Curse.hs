@@ -528,7 +528,7 @@ downloadAddonFile :: HasManagerIO r m => AddonFile -> Path Abs Dir -> ProgressOp
 downloadAddonFile AddonFile {..} outDir =
   downloadToFile downloadUrl (outDir </> fileName)
 
-data ModDeduplicateOptions = ModDeduplicateOptions
+newtype ModDeduplicateOptions = ModDeduplicateOptions
   { modDir :: SomeBase Dir
   }
   deriving stock (Show, Generic)

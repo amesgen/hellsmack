@@ -25,7 +25,7 @@ test_manifests = withSystemTempDir "" \dir -> do
         vm <- getVersionManifest version
         assets <- getAssetIndex vm
         at <- assetsType assets
-        pure (at, S.singleton $ vm ^. #assetIndex . #url)
+        pure (at, one $ vm ^. #assetIndex . #url)
     iforOf_ (ifolded . indices (isn't #_ModernAssetsType)) assetsTypesAndUrls \at urls ->
       assertBool [i|not exactly one url for assets type ${show at}: ${show urls}|] $
         S.size urls == 1

@@ -1,11 +1,12 @@
 let
   pkgs = import ./nix/pkgs.nix;
+  src = pkgs.haskell-nix.haskellLib.cleanGit {
+    name = "hellsmack";
+    src = ./.;
+    keepGitDir = true;
+  };
   hsPkgs = pkgs.haskell-nix.project {
-    src = pkgs.haskell-nix.haskellLib.cleanGit {
-      name = "hellsmack";
-      src = ./.;
-      keepGitDir = true;
-    };
+    inherit src;
     compiler-nix-name = "ghc8107";
     modules = [
       ({ pkgs, ... }: {
@@ -29,6 +30,7 @@ in {
       cabal = "latest";
       ghcid = "latest";
       weeder = "latest";
+      hlint = "latest";
     };
     withHoogle = false;
     exactDeps = true;
@@ -43,6 +45,13 @@ in {
       --hie-directory ${hellsmack.components.tests.tasty.hie} \
       | tee $out/weeder-log.txt || true
     diff ${./test/weeder-log.txt} $out/weeder-log.txt
+  '';
+  hlint = pkgs.runCommand "hellsmack-hlint" {
+    buildInputs = [ (hsPkgs.tool "hlint" "latest") ];
+  } ''
+    mkdir -p $out
+    cd ${src}
+    hlint src app test
   '';
   binaries = {
     Linux =
