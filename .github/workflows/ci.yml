@@ -7,8 +7,6 @@ on:
     types:
       - opened
       - synchronize
-env:
-  NIXPKGS_ALLOW_UNFREE: 1
 jobs:
   ormolu:
     runs-on: ubuntu-latest

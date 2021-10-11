@@ -5,8 +5,6 @@ on:
 defaults:
   run:
     shell: bash
-env:
-  NIXPKGS_ALLOW_UNFREE: 1
 jobs:
   build:
     strategy:
