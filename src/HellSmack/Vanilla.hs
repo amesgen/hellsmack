@@ -165,10 +165,10 @@ instance FromJSON Rule where
     let properties =
           Object v
             ^.. do members . indices (/= actionKey) <.> members
-              . withIndex
-              . to do uncurry Property
+              . do withIndex . re #_Property
     pure Rule {..}
     where
+      actionKey :: IsString s => s
       actionKey = "action"
 
 data Action = Allow | Disallow

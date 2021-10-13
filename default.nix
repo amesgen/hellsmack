@@ -22,22 +22,22 @@ let
   };
   hellsmack = hsPkgs.hellsmack;
   hellsmackExe = hellsmack.components.exes.hellsmack;
-in {
+in
+{
   inherit hellsmackExe;
   hellsmackTests = hellsmack.checks;
   dev.shell = hsPkgs.shellFor {
     tools = {
       cabal = "latest";
       ghcid = "latest";
-      weeder = "latest";
-      hlint = "latest";
     };
     withHoogle = false;
     exactDeps = true;
   };
-  weeder = pkgs.runCommand "hellsmack-weeder" {
-    buildInputs = [ (hsPkgs.tool "weeder" "latest") ];
-  } ''
+  weeder = pkgs.runCommand "hellsmack-weeder"
+    {
+      buildInputs = [ (hsPkgs.tool "weeder" "2.2.0") ];
+    } ''
     mkdir -p $out
     export XDG_CACHE_HOME=$TMPDIR/cache
     weeder --config ${./weeder.dhall} \
@@ -46,9 +46,10 @@ in {
       | tee $out/weeder-log.txt || true
     diff ${./test/weeder-log.txt} $out/weeder-log.txt
   '';
-  hlint = pkgs.runCommand "hellsmack-hlint" {
-    buildInputs = [ (hsPkgs.tool "hlint" "latest") ];
-  } ''
+  hlint = pkgs.runCommand "hellsmack-hlint"
+    {
+      buildInputs = [ (hsPkgs.tool "hlint" "latest") ];
+    } ''
     mkdir -p $out
     cd ${src}
     hlint src app test
@@ -56,9 +57,10 @@ in {
   binaries = {
     Linux =
       hsPkgs.projectCross.musl64.hsPkgs.hellsmack.components.exes.hellsmack;
-    macOS = pkgs.runCommand "hellsmack-macOS" {
-      buildInputs = [ pkgs.macdylibbundler ];
-    } ''
+    macOS = pkgs.runCommand "hellsmack-macOS"
+      {
+        buildInputs = [ pkgs.macdylibbundler ];
+      } ''
       mkdir -p $out/bin
       cp ${hellsmackExe}/bin/hellsmack $out/bin/hellsmack
       chmod 755 $out/bin/hellsmack

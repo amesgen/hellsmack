@@ -41,7 +41,7 @@ library
     , http-types >= 0.12
     , http-client >= 0.7
     , network-uri >= 2.6
-    , aeson >= 1.5
+    , aeson >= 2.0
     , deriving-aeson >= 0.2.7
     , lens-aeson >= 1.1
     , time >= 1.9
