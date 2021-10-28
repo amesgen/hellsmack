@@ -42,9 +42,7 @@ in
     export XDG_CACHE_HOME=$TMPDIR/cache
     weeder --config ${./weeder.dhall} \
       --hie-directory ${hellsmack.components.library.hie} \
-      --hie-directory ${hellsmack.components.tests.tasty.hie} \
-      | tee $out/weeder-log.txt || true
-    diff ${./test/weeder-log.txt} $out/weeder-log.txt
+      --hie-directory ${hellsmack.components.tests.tasty.hie}
   '';
   hlint = pkgs.runCommand "hellsmack-hlint"
     {
