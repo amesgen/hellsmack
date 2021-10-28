@@ -26,7 +26,6 @@ import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Vanilla qualified as V
 import HellSmack.Yggdrasil
 import System.IO.Temp
-import UnliftIO.Exception
 import UnliftIO.IO
 
 -- $setup

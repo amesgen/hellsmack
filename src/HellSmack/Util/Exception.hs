@@ -1,7 +1,9 @@
 module HellSmack.Util.Exception
   ( -- * Exceptions
     rethrow,
+    throwString,
     reThrow,
+    throwStringM,
   )
 where
 
@@ -13,3 +15,6 @@ rethrow = either throwString pure
 
 reThrow :: MonadIO m => CatchT m a -> m a
 reThrow = runCatchT >=> either throwIO pure
+
+throwStringM :: (MonadThrow m, HasCallStack) => String -> m a
+throwStringM = throwM . stringException

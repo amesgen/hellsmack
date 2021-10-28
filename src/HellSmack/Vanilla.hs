@@ -70,7 +70,6 @@ import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Yggdrasil
 import Text.Regex.Pcre2
-import UnliftIO.Exception
 
 data AllVersionsManifest = AllVersionsManifest
   { latest :: LatestVersion,
@@ -431,10 +430,11 @@ mainJarPath ::
 mainJarPath vm = do
   side <- mcSideName
   versionDir <- siehs @DirConfig #versionDir
-  let mcVersion = vm ^. #id . to unMCVersion . unpacked
-  vmid <- parseRelDir mcVersion
-  sideJar <- parseRelFile [i|$mcVersion-$side.jar|]
-  pure $ versionDir </> vmid </> sideJar
+  download <- maybe (throwStringM [i|unknown MC side: $side|]) pure =<< getMainDownload vm
+  -- the forge prefix exists due to a weird mechanic introduced in 1.17.1-37.0.29
+  -- also see 0d38e659d5969dd89cb6452758a48688dcf99b18
+  hashJar <- parseRelFile $ [i|forge-${}.jar|] $ download ^. #sha1 . to unSHA1
+  pure $ versionDir </> hashJar
 
 downloadMainJar ::
   (MonadUnliftIO m, MRHasAll r [DirConfig, MCSide, Manager] m) => VersionManifest -> m ()

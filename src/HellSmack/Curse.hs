@@ -50,7 +50,6 @@ import Relude.Extra.Group
 import Text.Layout.Table qualified as TL
 import Text.Layout.Table.Cell.Formatted qualified as TL
 import UnliftIO.Directory qualified as FP
-import UnliftIO.Exception
 import UnliftIO.Temporary
 
 data ModpackManifest = ModpackManifest
