@@ -13,7 +13,6 @@ import Codec.Archive.Zip
 import Control.Lens.Unsound (adjoin)
 import Data.Conduit.Process.Typed
 import Data.List (stripPrefix)
-import Data.List.Lens
 import Data.List.Split (splitOn)
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
@@ -383,9 +382,7 @@ preprocess fv vvm im = do
       checkPreprocessingOutputs im (expandVia dataMap) >>= rethrow
       logInfo "finished preprocessing"
   where
-    bistrip p s = \case
-      (T.stripPrefix p -> Just (T.stripSuffix s -> Just v)) -> Just v
-      _ -> Nothing
+    bistrip p s = preview $ prefixed p . suffixed s
 
 checkPreprocessingOutputs ::
   MonadIO m => InstallerManifest -> (Text -> Text) -> m (Either String ())

@@ -36,7 +36,6 @@ import Colourista.Pure qualified as C
 import Conduit hiding (ReleaseType)
 import Data.Align
 import Data.List (isInfixOf)
-import Data.List.Lens
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
