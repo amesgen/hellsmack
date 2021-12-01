@@ -494,6 +494,8 @@ processArguments vm assets classpath = do
           "auth_uuid" -> siehs @MCAuth #uuid
           ((`elem` ["auth_access_token", "auth_session"]) -> True) ->
             siehs @MCAuth $ #accessToken . to unAccessToken
+          ((`elem` ["clientid", "auth_xuid"]) -> True) ->
+            pure "bogus" -- TODO implement new auth stuff...
           ((`elem` ["version_name", "launcher_name"]) -> True) -> pure Meta.name
           "launcher_version" -> pure Meta.version
           "version_type" -> pure case vm ^. #versionType of
