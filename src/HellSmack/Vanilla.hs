@@ -368,10 +368,10 @@ processRules :: [Rule] -> Action
 processRules rules
   | null rules = Allow
   | otherwise =
-    rules
-      & takeWhile (allOf (#properties . each) doesPropertyApply)
-      & preview _last
-      & maybe Disallow (view #action)
+      rules
+        & takeWhile (allOf (#properties . each) doesPropertyApply)
+        & preview _last
+        & maybe Disallow (view #action)
 
 type Artifacts = [(Artifact, Maybe (Extract, Path Abs Dir))]
 

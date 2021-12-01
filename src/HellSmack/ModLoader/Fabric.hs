@@ -90,7 +90,7 @@ getVersionManifest mcVersion fabricVersion = do
   downloadCachedJson manifestUrl manifestPath Nothing `catch` \case
     HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException res body)
       | HTTP.responseStatus res == HTTP.badRequest400 && "no mappings version found for" `B.isPrefixOf` body ->
-        throwString "chosen Fabric version does not support this Minecraft version"
+          throwString "chosen Fabric version does not support this Minecraft version"
     e -> throwIO e
 
 libraryToArtifact :: MonadThrow m => Library -> m V.Artifact
