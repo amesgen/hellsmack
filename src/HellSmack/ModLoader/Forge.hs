@@ -182,7 +182,7 @@ getVersionManifest fv = do
               )
   pure $ vm & #libraries %~ fixUrls
   where
-    filterByAId aid = filtered $ has $ #name . #artifactId . only aid
+    filterByAId aid = filteredBy $ #name . #artifactId . only aid
 
 forgeInstallerMavenId :: ForgeVersion -> MavenId
 forgeInstallerMavenId fv =
@@ -468,7 +468,7 @@ launch fv = do
           runMCJava args
         False -> do
           launcherJar <-
-            libs ^? each . #name . filtered (has $ #artifactId . only "forge")
+            libs ^? each . #name . filteredBy (#artifactId . only "forge")
               & rethrow . maybeToRight "launcher library not found" >>= reThrow . libraryPath
           jarManifest <- readJarManifest launcherJar
           let expectEntry (k :: String) = rethrow . maybeToRight [i|$k not found|]

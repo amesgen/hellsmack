@@ -39,6 +39,6 @@ jobs:
           CABAL_DOCSPEC_VERSION: '0.0.0.20210111'
 
       - name: Build and test
-        run: nix-build --option sandbox false
+        run: nix flake check --option sandbox false
       - name: Run docspec
-        run: nix-shell --command 'cabal build --enable-tests && ./docspec.sh'
+        run: nix develop --command sh -c 'cabal build --enable-tests && ./docspec.sh'
