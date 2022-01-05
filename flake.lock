@@ -279,6 +279,44 @@
         "type": "github"
       }
     },
+    "nur": {
+      "locked": {
+        "lastModified": 1641336786,
+        "narHash": "sha256-I6KOK8VzJYnTesc0/tRbyzvzCbywfDT3HugbHvbPBA0=",
+        "owner": "nix-community",
+        "repo": "NUR",
+        "rev": "92a12cf604567b26ab44daf639947d34e6a7c622",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "NUR",
+        "type": "github"
+      }
+    },
+    "nur-amesgen": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1641254237,
+        "narHash": "sha256-zDo/y3x4LxsNb16hoXd/Sd5K1uBrUt3BIysnIwURZD0=",
+        "owner": "amesgen",
+        "repo": "nur-packages",
+        "rev": "74f22455c4d481b84bc6af0042d2f1fc9b85f662",
+        "type": "github"
+      },
+      "original": {
+        "owner": "amesgen",
+        "repo": "nur-packages",
+        "type": "github"
+      }
+    },
     "old-ghc-nix": {
       "flake": false,
       "locked": {
@@ -296,6 +334,29 @@
         "type": "github"
       }
     },
+    "pre-commit-hooks": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1639823344,
+        "narHash": "sha256-jlsQb2y6A5dB1R0wVPLOfDGM0wLyfYqEJNzMtXuzCXw=",
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "ff9c0b459ddc4b79c06e19d44251daa8e9cd1746",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -303,7 +364,10 @@
         "nixpkgs": [
           "haskellNix",
           "nixpkgs-unstable"
-        ]
+        ],
+        "nur": "nur",
+        "nur-amesgen": "nur-amesgen",
+        "pre-commit-hooks": "pre-commit-hooks"
       }
     },
     "stackage": {

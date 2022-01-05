@@ -2,3 +2,4 @@ dist-newstyle/
 cabal.project.local
 artifacts/
 result*
+.pre-commit-config.yaml
