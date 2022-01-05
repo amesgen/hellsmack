@@ -104,11 +104,10 @@ To update a modpack:
 
 ## Installation
 
-Pre-built binaries can be found on the [release page](https://github.com/amesgen/hellsmack/releases). In particular:
+Alternatively, pre-built binaries can be found on the [release page](https://github.com/amesgen/hellsmack/releases). In particular:
 
- - [Linux x86_64 (fully static)](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Linux)
- - [macOS x86_64](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-macOS)
- - [Windows x86_64](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Windows)
+ - [Linux x86_64 (fully static)](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Linux.zip)
+ - [Windows x86_64](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Windows.zip)
 
 Bash/zsh/fish completions are also available, run one of
 ```bash
@@ -128,15 +127,11 @@ Alternatively, you can use [haskell.nix](https://input-output-hk.github.io/haske
 
 Build a fully static Linux binary:
 ```bash
-nix-build -A binaries.Linux
+nix build .#binaries-Linux
 ```
 Cross-compile to Windows:
 ```bash
-nix-build -A binaries.Windows
-```
-Build a self-contained macOS binary:
-```
-nix-build -A binaries.macOS
+nix build .#binaries-Windows
 ```
 
 ## Acknowledgements
