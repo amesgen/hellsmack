@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: hellsmack
-version: 0.1.2.5
+version: 0.1.2.6
 
 homepage: https://github.com/amesgen/hellsmack
 bug-reports: https://github.com/amesgen/hellsmack/issues
