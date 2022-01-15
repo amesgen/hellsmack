@@ -25,7 +25,6 @@ import HellSmack.Util.Aeson
 import HellSmack.Util.Has
 import HellSmack.Util.Newtypes
 import HellSmack.Util.Path
-import System.Exit
 import System.FilePath (searchPathSeparator)
 import UnliftIO.Exception
 import UnliftIO.IO.File

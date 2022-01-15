@@ -13,8 +13,6 @@ jobs:
         include:
           - os: ubuntu-latest
             targetOs: Linux
-          - os: macOS-10.15
-            targetOs: macOS
           - os: ubuntu-latest
             targetOs: Windows
     name: Build binary for ${{ matrix.targetOs }}
@@ -27,7 +25,8 @@ jobs:
             trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
             substituters = https://cache.nixos.org https://hydra.iohk.io
       - name: Build binary
-        run: nix-build -A binaries.${{ matrix.targetOS }}
+        # see https://github.com/NixOS/nix/issues/5302
+        run: nix build .\?rev=$(git rev-parse HEAD)#binaries-${{ matrix.targetOS }}
       - name: Prepare upload
         run: |
           cd result/bin
@@ -46,8 +45,6 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macOS-10.15
-          - macOS-11
           - windows-latest
     name: Test built binaries
     runs-on: ${{ matrix.os }}

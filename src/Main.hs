@@ -5,7 +5,6 @@ module Main (main) where
 
 import Colourista.Pure qualified as C
 import Data.Text.Lens
-import Development.GitRev
 import HellSmack.Curse qualified as Curse
 import HellSmack.Curse.API qualified as Curse
 import HellSmack.Http
@@ -17,6 +16,7 @@ import HellSmack.Util
 import HellSmack.Util.Meta qualified as Meta
 import HellSmack.Vanilla qualified as Vanilla
 import HellSmack.Yggdrasil
+import Language.Haskell.TH.Env
 import Main.Utf8 (withUtf8)
 import Options.Applicative qualified as OA
 import System.Exit (ExitCode (..))
@@ -155,7 +155,9 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
     ver = OA.infoOption (toString verStr) do
       OA.short 'V' <> OA.long "version" <> OA.help "Print version"
       where
-        verStr = unwords $ [Meta.version, $(gitBranch), $(gitHash)] <> ["(dirty)" | $(gitDirty)]
+        verStr = Meta.version <> " " <> fromMaybe "(dirty)" rev
+          where
+            rev = $$(envQ "HELLSMACK_REV") :: Maybe Text
 
     subcommands = OA.subparser . foldMap simpleCommand
     simpleCommand (name, desc, opts) =

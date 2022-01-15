@@ -65,7 +65,7 @@ library
     , with-utf8 >= 1.0
     , semigroups >= 0.19
     , optparse-applicative >= 0.16
-    , gitrev >= 1.3
+    , th-env >= 0.1
   if os(windows)
     build-depends: http-client-tls >= 0.3
     cpp-options: -DUSE_HASKELL_TLS
