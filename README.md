@@ -104,6 +104,8 @@ To update a modpack:
 
 ## Installation
 
+If you are using Nix on Linux x86_64, you can use `pkgs.repos.amesgen.hellsmack` via [NUR](https://github.com/nix-community/NUR).
+
 Alternatively, pre-built binaries can be found on the [release page](https://github.com/amesgen/hellsmack/releases). In particular:
 
  - [Linux x86_64 (fully static)](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Linux.zip)
