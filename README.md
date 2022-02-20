@@ -125,7 +125,7 @@ This is an ordinary [Cabal](https://www.haskell.org/cabal/) project, so you can 
 cabal build exe:hellsmack
 ```
 
-Alternatively, you can use [haskell.nix](https://input-output-hk.github.io/haskell.nix) (make sure to configure the binary caches!).
+Alternatively, you can use [haskell.nix](https://input-output-hk.github.io/haskell.nix):
 
 Build a fully static Linux binary:
 ```bash
@@ -134,6 +134,10 @@ nix build .#binaries-Linux
 Cross-compile to Windows:
 ```bash
 nix build .#binaries-Windows
+```
+Self-contained macOS bundle:
+```bash
+nix build .#binaries-macOS
 ```
 
 ## Acknowledgements

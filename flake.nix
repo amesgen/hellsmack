@@ -11,7 +11,7 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
   outputs = { self, nixpkgs, flake-utils, haskellNix, nur, pre-commit-hooks }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+    flake-utils.lib.eachSystem [ "x86_64-linux" "x86_64-darwin" ] (system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -78,9 +78,32 @@
           inherit (self.checks.${system}.pre-commit-check) shellHook;
         };
 
-        packages = {
-          binaries-Linux = hsPkgs.projectCross.musl64.hsPkgs.hellsmack.components.exes.hellsmack;
-          binaries-Windows = hsPkgs.projectCross.mingwW64.hsPkgs.hellsmack.components.exes.hellsmack;
-        };
+        packages =
+          lib.optionalAttrs pkgs.stdenv.isLinux
+            {
+              binaries-Linux = hsPkgs.projectCross.musl64.hsPkgs.hellsmack.components.exes.hellsmack;
+              binaries-Windows = hsPkgs.projectCross.mingwW64.hsPkgs.hellsmack.components.exes.hellsmack;
+            }
+          // lib.optionalAttrs pkgs.stdenv.isDarwin {
+            binaries-macOS = pkgs.runCommand "hellsmack-macOS"
+              { buildInputs = [ pkgs.macdylibbundler ]; } ''
+              mkdir -p $out/bin
+              cp ${hellsmack.components.exes.hellsmack}/bin/hellsmack $out/bin/hellsmack
+              dylibbundler -b \
+                -x $out/bin/hellsmack \
+                -d $out/bin \
+                -p '@executable_path'
+            '';
+          };
       });
+  nixConfig = {
+    extra-substituters = [
+      "https://hydra.iohk.io"
+      "https://hellsmack.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+      "hellsmack.cachix.org-1:VI4cB7n7t1sAyJhfVc0ncIgInCaTfXbv1/kCOAuLFGQ="
+    ];
+  };
 }
