@@ -18,9 +18,8 @@ import Network.HTTP.Types.Status qualified as HTTP
 import UnliftIO.Exception
 
 newtype FabricVersion = FabricVersion {unFabricVersion :: Text}
-  deriving stock (Generic)
-  deriving newtype (Ord, Eq, FromJSON)
-  deriving (Show) via (ShowWithoutQuotes Text)
+  deriving stock (Show, Generic)
+  deriving newtype (Display, Ord, Eq, FromJSON)
 
 data Loader = Loader
   { version :: FabricVersion,
@@ -71,7 +70,7 @@ findVersion fvq = do
         maybeToRight "no stable Fabric version found" $ firstWith (^. #stable)
       ConcreteVersion v ->
         maybeToRight [i|$v is not a known Fabric version|] $ firstWith (has $ #version . #_FabricVersion . only v)
-  unless stable $ logWarn [i|the Fabric version ${show version} is unstable|]
+  unless stable $ logWarn [i|the Fabric version $version is unstable|]
   pure version
   where
     loadersUrl = [i|$fabricMeta/v2/versions/loader|]
@@ -83,10 +82,10 @@ getVersionManifest ::
   m VersionManifest
 getVersionManifest mcVersion fabricVersion = do
   sideName <- mcSideName
-  manifestFile <- reThrow $ parseRelFile [i|fabric-${show mcVersion}-$sideName-${show fabricVersion}.json|]
+  manifestFile <- reThrow $ parseRelFile [i|fabric-$mcVersion-$sideName-$fabricVersion.json|]
   manifestPath <- siehs @DirConfig $ #manifestDir . to (</> manifestFile)
   sideSlug :: Text <- sieh <&> \case MCClient -> "profile"; MCServer -> "server"
-  let manifestUrl = [i|$fabricMeta/v2/versions/loader/${show mcVersion}/${show fabricVersion}/$sideSlug/json|]
+  let manifestUrl = [i|$fabricMeta/v2/versions/loader/$mcVersion/$fabricVersion/$sideSlug/json|]
   downloadCachedJson manifestUrl manifestPath Nothing `catch` \case
     HTTP.HttpExceptionRequest _ (HTTP.StatusCodeException res body)
       | HTTP.responseStatus res == HTTP.badRequest400 && "no mappings version found for" `B.isPrefixOf` body ->

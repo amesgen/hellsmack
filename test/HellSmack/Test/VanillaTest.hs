@@ -27,7 +27,7 @@ test_manifests = withSystemTempDir "" \dir -> do
         at <- assetsType assets
         pure (at, one $ vm ^. #assetIndex . #url)
     iforOf_ (ifolded . indices (isn't #_ModernAssetsType)) assetsTypesAndUrls \at urls ->
-      assertBool [i|not exactly one url for assets type ${show at}: ${show urls}|] $
+      assertBool [i|not exactly one url for assets type ${show at :: String}: ${show urls :: String}|] $
         S.size urls == 1
 
 -- TODO expand

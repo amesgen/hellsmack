@@ -32,9 +32,8 @@ import UnliftIO.IO
 -- >>> import Test.Tasty.HUnit
 
 newtype ForgeVersion = ForgeVersion {unForgeVersion :: Text}
-  deriving stock (Generic)
-  deriving newtype (Ord, Eq, FromJSON)
-  deriving (Show) via (ShowWithoutQuotes Text)
+  deriving stock (Show, Generic)
+  deriving newtype (Display, Ord, Eq, FromJSON)
 
 -- $
 -- >>> isPre113 (ForgeVersion "1.16.4-35.1.28")
@@ -145,7 +144,7 @@ findVersion (coerce -> mcVersion) fvq = do
     case versions ^.. key mcVersion . values . _String . filtered (version `T.isInfixOf`) of
       [v] -> Right $ ForgeVersion v
       [] -> Left [i|invalid forge version: $version|]
-      vs -> Left $ [i|multiple matching forge versions: ${}|] $ T.intercalate ", " vs
+      vs -> Left [i|multiple matching forge versions: ${T.intercalate ", " vs}|]
   where
     manifestUrl = "https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.json"
     promotionsUrl = "https://files.minecraftforge.net/maven/net/minecraftforge/forge/promotions_slim.json"
@@ -161,7 +160,7 @@ getVersionManifest fv = do
         doesEntryExist es >>= \case
           True -> pure es
           False -> mkEntrySelector "install_profile.json"
-  forgeFile <- reThrow $ parseRelFile [i|forge-${show fv}.json|]
+  forgeFile <- reThrow $ parseRelFile [i|forge-$fv.json|]
   toPath <- siehs @DirConfig $ #manifestDir . to (</> forgeFile)
   json :: Value <- decodeJSON . toLazy =<< extractFromInstaller fv toPath findVersionFile getEntry
   vm <- decodeJSONValue case (json ^? key "install" . key "minecraft", json ^? key "versionInfo") of
@@ -172,7 +171,7 @@ getVersionManifest fv = do
         each %~ do
           ( #_Post113Lib . filterByAId "forge" %~ \l ->
               let mi = l ^. #name & #classifier ?~ if isPre113 then "universal" else "launcher"
-               in l & #downloads . #artifact . _Just . #url .~ [i|$forgeMavenUrl/${}|] (mavenIdUrl mi)
+               in l & #downloads . #artifact . _Just . #url .~ [i|$forgeMavenUrl/${mavenIdUrl mi}|]
             )
             . ( #_Pre113Lib
                   %~ (filterByAId "forge" %~ #name . #classifier ?~ "universal")
@@ -205,7 +204,7 @@ forgeMavenUrl = "https://files.minecraftforge.net/maven"
 
 downloadForgeInstaller :: (MonadIO m, MRHasAll r [DirConfig, Manager] m) => ForgeVersion -> m ()
 downloadForgeInstaller fv = do
-  let url = [i|$forgeMavenUrl/${}|] $ mavenIdUrl $ forgeInstallerMavenId fv
+  let url = [i|$forgeMavenUrl/${mavenIdUrl $ forgeInstallerMavenId fv}|]
   path <- reThrow $ forgeInstallerPath fv
   downloadHash url path Nothing ShowProgress
 
@@ -251,7 +250,7 @@ getLibraries vm = do
       let baseUrl = if isJust url then forgeMavenUrl else vanillaMavenUrl
           toArtifact name sha1 = do
             path <- mavenIdPath name
-            let url = [i|$baseUrl/${}|] $ mavenIdUrl name
+            let url = [i|$baseUrl/${mavenIdUrl name}|]
             pure V.Artifact {size = Nothing, ..}
       artifact <- Just <$> toArtifact name (checksums ^? _Just . _head)
       classifiers <-
@@ -265,7 +264,7 @@ getLibraries vm = do
 mergeWithVanilla :: V.VersionManifest -> VersionManifest -> [V.Library] -> V.VersionManifest
 mergeWithVanilla vm VersionManifest {..} libs =
   vm
-    & #id .~ V.MCVersion [i|forge-${show id}|]
+    & #id .~ V.MCVersion [i|forge-$id|]
     & #time .~ time
     & #releaseTime .~ releaseTime
     & #versionType .~ versionType
@@ -295,7 +294,7 @@ readJarManifest fp = do
 getInstallerManifest ::
   (MonadIO m, MRHasAll r [DirConfig, Manager] m) => ForgeVersion -> m InstallerManifest
 getInstallerManifest fv = do
-  forgeFile <- reThrow $ parseRelFile [i|forge-${show fv}.json|]
+  forgeFile <- reThrow $ parseRelFile [i|forge-$fv.json|]
   toPath <- siehs @DirConfig $ #manifestDir . to (</> forgeFile)
   decodeJSON . toLazy
     =<< extractFromInstaller fv toPath (mkEntrySelector "install_profile.json") getEntry
@@ -367,7 +366,7 @@ preprocess fv vvm im = do
             rethrow . maybeToRight "no main class found" . (^? ix "Main-Class" . unpacked)
               =<< readJarManifest jarPath
 
-          logFile <- liftIO $ emptyTempFile tmpDir [i|preprocessor-${show ipro}.log|]
+          logFile <- liftIO $ emptyTempFile tmpDir [i|preprocessor-$ipro.log|]
           UnliftIO.IO.withFile logFile WriteMode \(useHandleOpen -> handle) -> do
             javaBin <- siehs @JavaConfig $ #javaBin . to fromSomeFile
             let p =
@@ -375,9 +374,9 @@ preprocess fv vvm im = do
                     & setStdin nullStream
                     & setStdout handle
                     & setStderr handle
-            logTrace [i|raw forge preprocessor process: ${show p}|]
+            logTrace [i|raw forge preprocessor process: ${show p :: String}|]
             runProcess p >>= #_ExitFailure \_ ->
-              throwString [i|preprocessing ${show ipro} failed! log dir: $tmpDir|]
+              throwString [i|preprocessing $ipro failed! log dir: $tmpDir|]
       removeDirRecur =<< reThrow (parseAbsDir tmpDir)
       checkPreprocessingOutputs im (expandVia dataMap) >>= rethrow
       logInfo "finished preprocessing"
@@ -400,7 +399,7 @@ checkPreprocessingOutputs im expander = do
       fp <- reThrow $ parseAbsFile $ toString fp
       checkSHA1 fp sha1 <&> ($> fp) . leftToMaybe
   pure $ whenNotNull invalidPaths \(ip :| _) ->
-    Left $ [i|invalid hash for processed file ${}|] $ toFilePath ip
+    Left [i|invalid hash for processed file $ip|]
 
 downloadLibraries ::
   (MonadUnliftIO m, MRHasAll r '[MCSide, DirConfig, Manager] m) =>
@@ -444,7 +443,7 @@ launch fv = do
         V.downloadMainJar vvm
       rethrow (isJigsaw fv) >>= \case
         True -> do
-          argsFile <- reThrow $ parseRelFile [i|forge-args-${show fv}.txt|]
+          argsFile <- reThrow $ parseRelFile [i|forge-args-$fv.txt|]
           toPath <- siehs @DirConfig $ #manifestDir . to (</> argsFile)
           libraryDir <- toFilePath <$> siehs @DirConfig #libraryDir
           let archiveArgsSelector = mkEntrySelector case Meta.os of

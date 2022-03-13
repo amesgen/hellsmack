@@ -23,7 +23,6 @@ import Data.Text qualified as T
 import HellSmack.Logging
 import HellSmack.Util.Aeson
 import HellSmack.Util.Has
-import HellSmack.Util.Newtypes
 import HellSmack.Util.Path
 import System.FilePath (searchPathSeparator)
 import UnliftIO.Exception
@@ -165,9 +164,8 @@ mcSideName =
     MCServer -> "server"
 
 newtype MCVersion = MCVersion {unMCVersion :: Text}
-  deriving stock (Generic)
-  deriving newtype (Ord, Eq, FromJSON)
-  deriving (Show) via (ShowWithoutQuotes Text)
+  deriving stock (Show, Generic)
+  deriving newtype (Display, Ord, Eq, FromJSON)
 
 classpathSeparator :: String
 classpathSeparator = [searchPathSeparator]
@@ -187,7 +185,7 @@ runMCJava jvmArgs = do
   gdir <- sieh <&> toFilePath . unGameDir
   let p = proc (fromSomeFile javaBin) (extraJvmArgs ++ jvmArgs) & setWorkingDir gdir
   logInfo "launching minecraft"
-  logTrace [i|raw MC command: ${show p}|]
+  logTrace [i|raw MC command: ${show p :: String}|]
   runProcess p >>= \case
     ExitSuccess -> logInfo "minecraft finished successfully"
     _ -> throwString "minecraft crashed :("

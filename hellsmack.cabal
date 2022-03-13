@@ -29,6 +29,7 @@ library
 
   build-depends:
       relude >= 1.0
+    , text >= 1.2
     , split >= 0.2
     , these >= 1.1
     , semialign >= 1.2
@@ -45,7 +46,8 @@ library
     , deriving-aeson >= 0.2.7
     , lens-aeson >= 1.1
     , time >= 1.9
-    , yasi >= 0.1.1
+    , yasi >= 0.2
+    , text-display >= 0.0
     , binary >= 0.8
     , exceptions >= 0.10
     , unliftio >= 0.2
@@ -92,7 +94,7 @@ library
       HellSmack.Util.Meta
       HellSmack.Util.Minecraft
       HellSmack.Util.Murmur
-      HellSmack.Util.Newtypes
+      HellSmack.Util.Orphans
       HellSmack.Util.Path
       HellSmack.Util.Terminal
       HellSmack.Http

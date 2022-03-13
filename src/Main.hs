@@ -46,15 +46,15 @@ main =
             case (forgeVersion, fabricVersion) of
               (Nothing, Nothing) -> do
                 vm <- Vanilla.getVersionManifest mcVersion
-                logInfo $ [i|launching Minecraft ${} ($sideName)|] (inGreen mcVersion)
+                logInfo [i|launching Minecraft ${inGreen mcVersion} ($sideName)|]
                 Vanilla.launch vm
               (Just forgeVersion, Nothing) -> do
                 fv <- Forge.findVersion mcVersion forgeVersion
-                logInfo $ [i|launching Minecraft Forge ${} ($sideName)|] (inGreen fv)
+                logInfo [i|launching Minecraft Forge ${inGreen fv} ($sideName)|]
                 Forge.launch fv
               (Nothing, Just fabricVersion) -> do
                 fv <- Fabric.findVersion fabricVersion
-                logInfo $ [i|launching Minecraft ${}, Fabric ${} ($sideName)|] (inGreen mcVersion) (inGreen fv)
+                logInfo [i|launching Minecraft ${inGreen mcVersion}, Fabric ${inGreen fv} ($sideName)|]
                 Fabric.launch mcVersion fv
               _ -> throwString "more than one mod loader specified!"
         Auth o -> usingReaderT (httpManager, logger) case o of
@@ -77,7 +77,7 @@ main =
             ModDeduplicate o ->
               Curse.deduplicateMods o
   where
-    inGreen = C.formatWith [C.green] . show @Text
+    inGreen = C.formatWith [C.green] . display
     displayErrors =
       catches
         ?? [ Handler \(StringException msg cs) -> logAndExit $ toText $ msg <> "\n" <> prettyCallStack cs,
