@@ -31,6 +31,7 @@ import Data.Text.Encoding.Base16 qualified as T
 import HellSmack.Util.Aeson
 import HellSmack.Util.Exception
 import HellSmack.Util.Has
+import HellSmack.Util.Orphans ()
 import HellSmack.Util.Path
 import HellSmack.Util.Terminal
 import Network.HTTP.Client
@@ -78,9 +79,9 @@ checkSHA1 fp sha1 =
           sourceHandleUnsafe h
             .| foldlC SHA1.update SHA1.init
             <&> SHA1 . B.encodeBase16 . SHA1.finalize
-        pure $ unless (sha1 == actualSha1) $ Left [i|invalid hash for local file ${show fp}|]
+        pure $ unless (sha1 == actualSha1) $ Left [i|invalid hash for local file $fp|]
       Nothing -> pure pass
-    False -> pure $ Left [i|file ${show fp} does not exist|]
+    False -> pure $ Left [i|file $fp does not exist|]
 
 downloadToFile ::
   HasManagerIO r m =>

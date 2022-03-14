@@ -279,8 +279,8 @@ getVersionManifest version = do
   Version {url, id} <- downloadMaybeJson allVersionsManifestUrl path Nothing \avm ->
     (avm :: AllVersionsManifest)
       & findOf (#versions . each) (has $ #id . only version)
-      & maybeToRight [i|minecraft version '${show version}' not found|]
-  versionPath <- reThrow $ (</>) <$> siehs @DirConfig #manifestDir <*> parseRelFile [i|${show id}.json|]
+      & maybeToRight [i|minecraft version '${version}' not found|]
+  versionPath <- reThrow $ (</>) <$> siehs @DirConfig #manifestDir <*> parseRelFile [i|$id.json|]
   let hashFromUrl = url & T.stripPrefix urlPrefix <&> T.takeWhile (/= '/') >>= makeSHA1
   downloadCachedJson url versionPath hashFromUrl
   where
@@ -324,9 +324,8 @@ downloadAssets assets@Assets {objects} = do
   let forAllAssets getPath = stepWise (withGenericProgress (length objects)) \step ->
         forConcurrentlyNetwork_ (M.toList objects) \e@(_, Asset {hash}) -> step do
           path <- getPath e
-          let url = [i|$assetUrl/${}|] $ h2hash hash
-          downloadHash url path (Just hash) HideProgress
-      h2hash (unSHA1 -> hash) = [iS|${}/$hash|] $ T.take 2 hash
+          downloadHash [i|$assetUrl/${h2hash hash}|] path (Just hash) HideProgress
+      h2hash (unSHA1 -> hash) = [iS|${T.take 2 hash}/$hash|]
   rethrow (assetsType assets) >>= \case
     ModernAssetsType -> forAllAssets \(_, Asset {hash}) -> do
       file <- reThrow $ parseRelFile $ h2hash hash
@@ -479,7 +478,7 @@ processArguments vm assets classpath = do
         toString <$> value
     processOldArgs args = do
       game <- T.splitOn " " args <&> toString & traverse replaceInputs
-      natDir <- reThrow $ toFilePath <$> versionNativeDir vm
+      natDir <- reThrow $ versionNativeDir vm
       pure (game, ["-cp", classpath, [i|-Djava.library.path=$natDir|]])
     replaceInputs =
       packed . [_regex|\$\{(?<prop>[^\}]+)\}|] %%~ \cap ->

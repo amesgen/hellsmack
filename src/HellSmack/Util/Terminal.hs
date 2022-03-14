@@ -129,7 +129,7 @@ withProgress showN' maxCount cb =
       withProgressBar \_ -> cb $ atomicModifyIORef'_ countRef
     False -> cb $ const pass
   where
-    barTxt diff bar count = [i|[$diffTxt] $bar ${} / ${}|] (showN count) (showN maxCount)
+    barTxt diff bar count = [i|[$diffTxt] $bar ${showN count} / ${showN maxCount}|]
       where
         showN = showN' maxCount
         diffTxt = formatTime defaultTimeLocale "%02H:%02M:%02S" diff

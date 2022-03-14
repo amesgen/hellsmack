@@ -8,6 +8,6 @@ import HellSmack.Util.IO as X
 import HellSmack.Util.Meta as X
 import HellSmack.Util.Minecraft as X
 import HellSmack.Util.Murmur as X
-import HellSmack.Util.Newtypes as X
+import HellSmack.Util.Orphans as X ()
 import HellSmack.Util.Path as X
 import HellSmack.Util.Terminal as X

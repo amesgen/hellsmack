@@ -106,18 +106,18 @@ downloadFullModpack ModpackInstallOptions {..} = do
           es <- mkEntrySelector "manifest.json"
           getEntry es >>= decodeJSON . toLazy
         let modpackVersion = C.formatWith [C.bold] $ manifest ^. #version
-            mcVersion :: Text = C.formatWith [C.bold] $ show $ manifest ^. #minecraft . #version
+            mcVersion = C.formatWith [C.bold] $ display $ manifest ^. #minecraft . #version
         logInfo [i|modpack version: $modpackVersion, MC version: $mcVersion|]
         forOf_
           do #minecraft . #modLoaders . each . filtered (^. #primary)
           manifest
-          \ModLoaderInfo {id} -> logInfo $ [i|mod loader: ${}|] $ C.formatWith [C.bold] id
+          \ModLoaderInfo {id} -> logInfo [i|mod loader: ${C.formatWith [C.bold] id}|]
 
         let (optionalFileIds, requiredFileIds) =
               manifest ^. #files & partitionWith \f ->
                 (chosen %~ (^. #fileID)) . bool Left Right (f ^. #required) $ f
 
-        logInfo $ [i|fetching metadata of $show mods|] $ length requiredFileIds
+        logInfo [i|fetching metadata of ${length requiredFileIds} mods|]
         files <- getAddonFilesByFileIds requiredFileIds <&> (^.. each . folded)
 
         let modDir = outDir </> [reldir|mods|]
@@ -128,24 +128,24 @@ downloadFullModpack ModpackInstallOptions {..} = do
             (unzip -> (_, knownOldMods), trulyNewMods, sameMods) =
               partitionThese . M.elems $ M.fromList oldModsByFP `align` M.fromList newModsByFP
             deletableOldFiles = unknownMods <> knownOldMods
-        for_ sameMods \((oldFile, toFilePath -> p), newFile) ->
+        for_ sameMods \((oldFile, p), newFile) ->
           when (oldFile ^. #id /= newFile ^. #id) $ throwString [i|internal ID conflict for mod $p|]
 
-        whenNotNull sameMods $ logInfo . [i|$show mods already present|] . length
+        whenNotNull sameMods $ logInfo . [i|${} mods already present|] . length
 
         case trulyNewMods of
           [] -> logInfo "no new mods need to be downloaded"
           _ -> do
             let modSize = showBytes' $ sumOf (each . #fileLength) trulyNewMods
                 modCount = length trulyNewMods
-            logInfo [i|downloading ${show modCount} mods ($modSize)|]
+            logInfo [i|downloading $modCount mods ($modSize)|]
             stepWise (withGenericProgress modCount) \step ->
               forConcurrentlyNetwork_ trulyNewMods \a -> step $ downloadAddonFile a modDir HideProgress
 
         whenNotNull deletableOldFiles \_ -> do
-          logInfo $ [i|deleting $show stale mod files|] (length deletableOldFiles)
+          logInfo [i|deleting ${length deletableOldFiles} stale mod files|]
           for_ deletableOldFiles \p -> do
-            logTrace $ [i| - ${}|] $ toFilePath p
+            logTrace [i| - $p|]
             removeFile p
 
         whenNotNull optionalFileIds \_ -> do
@@ -238,7 +238,7 @@ searchInstallModpack ModpackSearchInstallOptions {..} = do
       Just <$> selectViaTable addons ["name", "authors", "download count"] \a ->
         [ formattedVia C.green . toString $ a ^. #name,
           TL.plain . intercalate ", " $ a ^.. #authors . each . #name . unpacked,
-          TL.plain . show @_ @Int . round $ a ^. #downloadCount
+          TL.plain . toString . display @Int . round $ a ^. #downloadCount
         ]
   whenJust addon \addon -> do
     files <-
@@ -310,8 +310,8 @@ findInCurseDB inputs = do
           Just FingerprintMatch {..} -> Right (id, file, path)
           Nothing -> Left path
   unless (null unknown) do
-    logWarn $ [i|these ${show} files are not present in the CurseForge mod database:|] $ length unknown
-    for_ unknown $ logWarn . [i| - ${}|] . toFilePath
+    logWarn [i|these ${length unknown} files are not present in the CurseForge mod database:|]
+    for_ unknown $ logWarn . [i| - ${}|]
   pure result
 
 data ModLoader = ForgeModLoader | FabricModLoader
@@ -336,7 +336,7 @@ updateMods ModUpdateOptions {..} = do
   outDir <- outDir & _Just %%~ makeSomeAbsolute
   (_, updatable) <- findInCurseDB inputs
   unless (null updatable) do
-    logInfo $ [i|fetching update info for $show mods|] $ length updatable
+    logInfo [i|fetching update info for ${length updatable} mods|]
     let isNewerFile file f =
           f ^. #fileDate > file ^. #fileDate
             && case mcVersion of
@@ -361,7 +361,7 @@ updateMods ModUpdateOptions {..} = do
       let addonName c a = C.formatWith c $ a ^. #name
           fileName c f = C.formatWith c $ f ^. #displayName
       case newerFiles of
-        Nothing -> logInfo $ [i|no updates for ${}|] $ addonName [C.bold] addon
+        Nothing -> logInfo [i|no updates for ${addonName [C.bold] addon}|]
         Just newerFiles -> do
           let an = addonName [C.bold, C.green] addon
               fn = fileName [C.bold] file
@@ -379,7 +379,7 @@ updateMods ModUpdateOptions {..} = do
           if newFile ^. #id == file ^. #id
             then logInfo "staying on current version"
             else do
-              logInfo $ [i|updating to ${}|] $ fileName [C.green, C.bold] newFile
+              logInfo [i|updating to ${fileName [C.green, C.bold] newFile}|]
               downloadAddonFile newFile (outDir ?: parent path) ShowProgress
               unless keepOld $ removeFile path
   where
@@ -406,7 +406,7 @@ installMods ModsInstallOptions {..} = do
   whenNotNull
     do toList $ S.fromList fileIds S.\\ S.fromList (addonFiles ^.. each . to head . #id)
     \(coerce @_ @[Int] . toList -> unknownFileIds) ->
-      throwString $ [i|unknown file IDs: ${}|] $ T.intercalate ", " $ show <$> unknownFileIds
+      throwString $ [i|unknown file IDs: ${}|] $ T.intercalate ", " $ display <$> unknownFileIds
   addons <- getAddons (addonFiles ^.. ifolded . asIndex) <&> M.fromList . fmapToFst (^. #id)
   ensureDir outDir
   addonFiles <- forM (itoList addonFiles) \(aid, file :| _) -> do
@@ -422,7 +422,7 @@ installMods ModsInstallOptions {..} = do
             [ formattedVia (C.bold <> C.green) . toString $ addon ^. #name,
               formattedVia C.bold . toString $ file ^. #displayName
             ]
-  logInfo $ [i|downloading $show mods|] $ length addonFiles
+  logInfo [i|downloading ${length addonFiles} mods|]
   forConcurrentlyNetwork_ (addonFiles `zip` tableLines) \((_, file), line) -> do
     logInfo $ toText line
     downloadAddonFile file outDir HideProgress
@@ -469,10 +469,10 @@ searchInstallMod ModSearchInstallOptions {..} = do
       Just <$> selectViaTable addons ["name", "authors", "download count"] \a ->
         [ formattedVia C.green . toString $ a ^. #name,
           TL.plain . intercalate ", " $ a ^.. #authors . each . #name . unpacked,
-          TL.plain . show @_ @Int . round $ a ^. #downloadCount
+          TL.plain . toString . display @Int . round $ a ^. #downloadCount
         ]
   whenJust addon \a@Addon {name = addonName} -> do
-    logInfo $ [i|selected ${}|] $ C.formatWith [C.green, C.bold] addonName
+    logInfo [i|selected ${C.formatWith [C.green, C.bold] addonName}|]
     whenJustM (selectAddonFile a) \file -> do
       ensureDir outDir
       downloadAddonFile file outDir ShowProgress
@@ -481,7 +481,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
         logInfo [i|fetching dependency metadata|]
         deps <- findDeps requiredDependencyType file
         whenNotNull deps \deps -> do
-          logInfo $ [i|downloading ${} dependencies|] $ C.formatWith [C.green, C.bold] addonName
+          logInfo [i|downloading ${C.formatWith [C.green, C.bold] addonName} dependencies|]
           stepWise (withGenericProgress (length deps)) \step ->
             forConcurrentlyNetwork_ deps \file ->
               step $ downloadAddonFile file outDir HideProgress
@@ -503,7 +503,7 @@ searchInstallMod ModSearchInstallOptions {..} = do
               TL.plain . toString . showBytes' $ f ^. #fileLength
             ]
       whenJust file \AddonFile {displayName = modFileName} ->
-        logInfo $ [i|selected ${}|] $ C.formatWith [C.green, C.bold] modFileName
+        logInfo [i|selected ${C.formatWith [C.green, C.bold] modFileName}|]
       pure file
 
     findDeps dt =
@@ -545,8 +545,8 @@ deduplicateMods ModDeduplicateOptions {..} = do
     & \case
       [] -> logInfo [i|no duplicated mods found|]
       toBeRemoved -> do
-        logInfo $ [i|removing $show old mods:|] $ length toBeRemoved
-        for_ toBeRemoved $ logInfo . [i| - ${}|] . toFilePath
+        logInfo [i|removing ${length toBeRemoved} old mods:|]
+        for_ toBeRemoved $ logInfo . [i| - ${}|]
         promptBool "remove" >>= \case
           True -> logInfo "removing old mods" *> for_ toBeRemoved removeFile
           False -> logInfo "keeping old mods"

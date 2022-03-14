@@ -66,7 +66,6 @@ where
 
 import Conduit hiding (ReleaseType)
 import Data.Conduit.Serialization.Binary
-import Data.Text qualified as T
 import Data.Time
 import HellSmack.Util
 import Network.HTTP.Client
@@ -75,35 +74,35 @@ import UnliftIO.IO
 
 newtype AddonId = AddonId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON, FromJSONKey, ToJSON)
+  deriving newtype (Display, FromJSON, FromJSONKey, ToJSON)
 
 newtype AddonAttachmentId = AddonAttachmentId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 newtype AddonAuthorId = AddonAuthorId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 newtype AddonFileId = AddonFileId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON, ToJSON)
+  deriving newtype (Display, FromJSON, ToJSON)
 
 newtype GameId = GameId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 newtype CategoryId = CategoryId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 newtype CategorySectionId = CategorySectionId Int
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 newtype Fingerprint = Fingerprint Word32
   deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON, ToJSON)
+  deriving newtype (Display, FromJSON, ToJSON)
 
 data Addon = Addon
   { id :: AddonId,
@@ -219,11 +218,11 @@ instance FromJSON AttachmentStatus where
 -- explicitly list some possible values?
 newtype ProjectStatus = ProjectStatus Int
   deriving stock (Show, Eq, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 newtype PackageType = PackageType Int
   deriving stock (Show, Eq, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 data ReleaseType = Release | Beta | Alpha
   deriving stock (Show, Eq, Ord, Generic, Enum, Bounded)
@@ -272,7 +271,7 @@ data AddonFileDependency = AddonFileDependency
 
 newtype DependencyType = DependencyType Int
   deriving stock (Show, Eq, Generic)
-  deriving newtype (FromJSON)
+  deriving newtype (Display, FromJSON)
 
 data FingerprintMatchResult = FingerprintMatchResult
   { isCacheBuilt :: Bool,
@@ -313,6 +312,17 @@ data AddonSortMethod
   | ByCategory
   | ByGameVersion
   deriving stock (Show, Eq, Generic)
+
+instance Display AddonSortMethod where
+  displayBuilder = \case
+    ByFeatured -> "Featured"
+    ByPopularity -> "Popularity"
+    ByLastUpdated -> "LastUpdated"
+    ByName -> "Name"
+    ByAuthor -> "Author"
+    ByTotalDownloads -> "TotalDownloads"
+    ByCategory -> "Category"
+    ByGameVersion -> "GameVersion"
 
 -- add missing stuff?
 data Game = Game
@@ -402,7 +412,7 @@ postJSON :: (HasManagerIO r m, FromJSON a, ToJSON b) => Text -> b -> m a
 postJSON url = sendJSON url POST [] . Just
 
 getAddon :: (HasManagerIO r m) => AddonId -> m Addon
-getAddon (AddonId aid) = getJSON [i|addon/${show aid}|]
+getAddon aid = getJSON [i|addon/$aid|]
 
 getAddons :: (HasManagerIO r m) => [AddonId] -> m [Addon]
 getAddons = \case
@@ -413,22 +423,23 @@ searchAddons :: (HasManagerIO r m) => SearchCriteria -> m [Addon]
 searchAddons SearchCriteria {..} = sendJSON [i|addon/search|] GET qs (Nothing @())
   where
     qs =
-      [ ("gameId", show @_ @Int . coerce $ gameId),
-        ("gameVersion", encodeUtf8 gameVersion),
-        ("sectionId", show @_ @Int . coerce $ categorySectionId),
-        ("categoryId", show @_ @Int . coerce $ categoryId),
-        ("sort", encodeUtf8 . T.drop 2 . show $ sortMethod),
-        ("isSortDescending", show if sortDescending then 1 :: Int else 0),
-        ("index", show index),
-        ("pageSize", show pageSize),
-        ("searchFilter", encodeUtf8 searchFilter)
-      ]
+      each . _2 %~ encodeUtf8 $
+        [ ("gameId", display gameId),
+          ("gameVersion", gameVersion),
+          ("sectionId", display categorySectionId),
+          ("categoryId", display categoryId),
+          ("sort", display sortMethod),
+          ("isSortDescending", display if sortDescending then 1 :: Int else 0),
+          ("index", display index),
+          ("pageSize", display pageSize),
+          ("searchFilter", searchFilter)
+        ]
 
 getAddonFile :: (HasManagerIO r m) => AddonId -> AddonFileId -> m AddonFile
-getAddonFile (AddonId aid) (AddonFileId fid) = getJSON [i|addon/${show aid}/fid/${show fid}|]
+getAddonFile aid fid = getJSON [i|addon/$aid/fid/$fid|]
 
 getAddonFilesByAddonId :: (HasManagerIO r m) => AddonId -> m [AddonFile]
-getAddonFilesByAddonId (AddonId aid) = getJSON [i|addon/${show aid}/files|]
+getAddonFilesByAddonId aid = getJSON [i|addon/$aid/files|]
 
 getAddonFilesByFileIds ::
   (HasManagerIO r m) => [AddonFileId] -> m (Map AddonId (NonEmpty AddonFile))
@@ -452,7 +463,7 @@ fingerprintFile fp = liftIO $ withBinaryFile (toFilePath fp) ReadMode \handle ->
     isNonWSChar b = b /= 9 && b /= 10 && b /= 13 && b /= 32
 
 getGame :: (HasManagerIO r m) => GameId -> m Game
-getGame (GameId id) = getJSON [i|game/${show id}|]
+getGame gid = getJSON [i|game/$gid|]
 
 getGames ::
   (HasManagerIO r m) =>
