@@ -37,7 +37,7 @@
         hellsmack = hsPkgs.hellsmack;
       in
       {
-        defaultApp = flake-utils.lib.mkApp {
+        apps.default = flake-utils.lib.mkApp {
           drv = hellsmack.components.exes.hellsmack;
           exePath = "/bin/hellsmack";
         };
@@ -70,7 +70,7 @@
               };
             };
         };
-        devShell = hsPkgs.shellFor {
+        devShells.default = hsPkgs.shellFor {
           tools = { cabal = { }; };
           buildInputs = [ pkgs.nur.repos.amesgen.cabal-docspec ];
           withHoogle = false;
