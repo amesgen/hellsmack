@@ -13,10 +13,6 @@ jobs:
         include:
           - os: ubuntu-latest
             targetOs: Linux
-          - os: ubuntu-latest
-            targetOs: Windows
-          - os: macos-latest
-            targetOs: macOS
     name: Build binary for ${{ matrix.targetOs }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -46,8 +42,6 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - windows-latest
-          - macos-latest
     name: Test built binaries
     runs-on: ${{ matrix.os }}
     needs: build

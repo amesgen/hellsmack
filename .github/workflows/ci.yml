@@ -21,9 +21,6 @@ jobs:
           name: hellsmack
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Ugly hack
-        # see https://github.com/input-output-hk/haskell.nix/issues/1097
-        run: sed -i 's/ "x86_64-darwin"//g' flake.nix
       - name: Build and test
         run: nix flake check --option sandbox false
       - name: Run docspec
