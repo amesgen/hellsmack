@@ -106,10 +106,7 @@ To update a modpack:
 
 If you are using Nix on Linux x86_64, you can use `pkgs.nur.repos.amesgen.hellsmack` via [NUR](https://github.com/nix-community/NUR).
 
-Alternatively, pre-built binaries can be found on the [release page](https://github.com/amesgen/hellsmack/releases). In particular:
-
- - [Linux x86_64 (fully static)](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Linux.zip)
- - [Windows x86_64](https://github.com/amesgen/hellsmack/releases/latest/download/hellsmack-Windows.zip)
+Alternatively, pre-built binaries can be found on the [release page](https://github.com/amesgen/hellsmack/releases).
 
 Bash/zsh/fish completions are also available, run one of
 ```bash
@@ -125,19 +122,9 @@ This is an ordinary [Cabal](https://www.haskell.org/cabal/) project, so you can 
 cabal build exe:hellsmack
 ```
 
-Alternatively, you can use [haskell.nix](https://input-output-hk.github.io/haskell.nix):
-
-Build a fully static Linux binary:
+Alternatively, you can use [haskell.nix](https://input-output-hk.github.io/haskell.nix) to build a fully static Linux x86_64 binary:
 ```bash
 nix build .#binaries-Linux
-```
-Cross-compile to Windows:
-```bash
-nix build .#binaries-Windows
-```
-Self-contained macOS bundle:
-```bash
-nix build .#binaries-macOS
 ```
 
 ## Acknowledgements
