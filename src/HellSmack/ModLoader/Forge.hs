@@ -128,7 +128,7 @@ findVersion ::
   V.MCVersion ->
   VersionQuery ->
   m ForgeVersion
-findVersion (coerce -> mcVersion) fvq = do
+findVersion (V.MCVersion mcVersion) fvq = do
   manifestPath <- allVersionsManifestPath
   let promoOrVersion = case fvq of
         ConcreteVersion version -> Right version
@@ -138,10 +138,10 @@ findVersion (coerce -> mcVersion) fvq = do
     promoOrVersion & _Left %%~ \promoKey ->
       downloadJson promotionsUrl
         >>= rethrow . \(versions :: Value) ->
-          versions ^? (key "promos" . key [i|$mcVersion-$promoKey|] . _String)
+          versions ^? (key "promos" . key [iFS|$mcVersion-$promoKey|] . _String)
             & maybeToRight "no promoted version found"
   downloadMaybeJson manifestUrl manifestPath Nothing \(versions :: Value) ->
-    case versions ^.. key mcVersion . values . _String . filtered (version `T.isInfixOf`) of
+    case versions ^.. key (mcVersion ^. _Key) . values . _String . filtered (version `T.isInfixOf`) of
       [v] -> Right $ ForgeVersion v
       [] -> Left [i|invalid forge version: $version|]
       vs -> Left [i|multiple matching forge versions: ${T.intercalate ", " vs}|]

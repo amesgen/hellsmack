@@ -1,3 +1,1 @@
 packages: .
-
-constraints: zip +disable-bzip2
