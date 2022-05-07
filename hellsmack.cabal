@@ -44,7 +44,7 @@ library
     , network-uri >= 2.6
     , aeson >= 2.0
     , deriving-aeson >= 0.2.7
-    , lens-aeson >= 1.1
+    , lens-aeson >= 1.2
     , time >= 1.9
     , yasi >= 0.2
     , text-display >= 0.0

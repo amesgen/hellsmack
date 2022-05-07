@@ -163,10 +163,11 @@ instance FromJSON Rule where
     action <- v .: actionKey
     let properties =
           Object v
-            ^.. do members . indices (/= actionKey) <.> members
+            ^.. do members' . indices (/= actionKey) <.> members'
               . do withIndex . re #_Property
     pure Rule {..}
     where
+      members' = reindexed (^. re _Key) members
       actionKey :: IsString s => s
       actionKey = "action"
 
