@@ -135,11 +135,12 @@ findVersion (V.MCVersion mcVersion) fvq = do
         RecommendedVersion -> Left ("recommended" :: Text)
         LatestVersion -> Left "latest"
   (view chosen -> version) <-
-    promoOrVersion & _Left %%~ \promoKey ->
-      downloadJson promotionsUrl
-        >>= rethrow . \(versions :: Value) ->
-          versions ^? (key "promos" . key [iFS|$mcVersion-$promoKey|] . _String)
-            & maybeToRight "no promoted version found"
+    promoOrVersion
+      & _Left %%~ \promoKey ->
+        downloadJson promotionsUrl
+          >>= rethrow . \(versions :: Value) ->
+            versions ^? (key "promos" . key [iFS|$mcVersion-$promoKey|] . _String)
+              & maybeToRight "no promoted version found"
   downloadMaybeJson manifestUrl manifestPath Nothing \(versions :: Value) ->
     case versions ^.. key (mcVersion ^. _Key) . values . _String . filtered (version `T.isInfixOf`) of
       [v] -> Right $ ForgeVersion v
@@ -254,10 +255,11 @@ getLibraries vm = do
             pure V.Artifact {size = Nothing, ..}
       artifact <- Just <$> toArtifact name (checksums ^? _Just . _head)
       classifiers <-
-        natives & _Just %%~ do
-          fmap M.fromList
-            . traverse ((_2 %%~ \c -> toArtifact (name & #classifier ?~ c) Nothing) . dup)
-            . toList
+        natives
+          & _Just %%~ do
+            fmap M.fromList
+              . traverse ((_2 %%~ \c -> toArtifact (name & #classifier ?~ c) Nothing) . dup)
+              . toList
       pure V.Library {downloads = V.LibraryDownload {..}, ..}
     Post113Lib l -> pure l
 
@@ -318,7 +320,8 @@ preprocess fv vvm im = do
         v -> pure $ Left v
   (excess, dataMap) <-
     forM (im ^@.. #dataEntries . ifolded) do
-      fmap (\(k, v) -> v & chosen %~ (k,)) . (_2 %%~ expandMavenIdsAndLiterals)
+      fmap (\(k, v) -> v & chosen %~ (k,))
+        . (_2 %%~ expandMavenIdsAndLiterals)
         . (_2 %~ view case side of MCClient -> #client; MCServer -> #server)
         . (_1 %~ \k -> "{" <> k <> "}")
       <&> partitionEithers
@@ -346,11 +349,12 @@ preprocess fv vvm im = do
           ]
       dataMap <-
         M.union extraDataEntries . M.union dataMap <$> do
-          excess & each %%~ \(toString . T.drop 1 -> fp) -> do
-            fp <- reThrow $ parseRelFile fp
-            newFp <- liftIO $ parseAbsFile =<< emptyTempFile tmpDir "embedded"
-            extractFromInstaller' fv fp newFp
-            pure $ toText . toFilePath $ newFp
+          excess
+            & each %%~ \(toString . T.drop 1 -> fp) -> do
+              fp <- reThrow $ parseRelFile fp
+              newFp <- liftIO $ parseAbsFile =<< emptyTempFile tmpDir "embedded"
+              extractFromInstaller' fv fp newFp
+              pure $ toText . toFilePath $ newFp
       let preprocessors =
             -- filter out the new (in forge 1.17.1) preprocessor which copies server scripts around
             im ^.. #processors . each . filtered (not . isServerOnlyProcessor)
@@ -468,17 +472,19 @@ launch fv = do
         False -> do
           launcherJar <-
             libs ^? each . #name . filteredBy (#artifactId . only "forge")
-              & rethrow . maybeToRight "launcher library not found" >>= reThrow . libraryPath
+              & rethrow . maybeToRight "launcher library not found"
+              >>= reThrow . libraryPath
           jarManifest <- readJarManifest launcherJar
           let expectEntry (k :: String) = rethrow . maybeToRight [i|$k not found|]
           mainClass <- expectEntry "main class" $ jarManifest ^? ix "Main-Class" . unpacked
           otherLibs <- do
             raw <- expectEntry "classpath" $ jarManifest ^? ix "Class-Path" . to (T.splitOn " ")
             libDir <- siehs @DirConfig #libraryDir
-            raw & each %%~ \case
-              (T.stripPrefix "libraries/" -> Just p) -> do
-                p <- reThrow $ parseRelFile $ toString p
-                pure $ libDir </> p
-              p | "minecraft_server." `T.isPrefixOf` p -> reThrow $ V.mainJarPath vvm
-              p -> throwString [i|invalid classpath entry: $p|]
+            raw
+              & each %%~ \case
+                (T.stripPrefix "libraries/" -> Just p) -> do
+                  p <- reThrow $ parseRelFile $ toString p
+                  pure $ libDir </> p
+                p | "minecraft_server." `T.isPrefixOf` p -> reThrow $ V.mainJarPath vvm
+                p -> throwString [i|invalid classpath entry: $p|]
           runMCJava $ ["-cp", joinClasspath $ launcherJar : otherLibs] ++ [mainClass]

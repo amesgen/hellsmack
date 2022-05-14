@@ -473,40 +473,42 @@ processArguments vm assets classpath = do
     <$> sequence [forM oldArgs processOldArgs, forM newArgs processNewArgs]
   where
     processNewArgs Arguments {game, jvm} =
-      (game, jvm) & each %%~ \args -> traverse replaceInputs do
-        Argument {value, rules} <- args
-        guard $ processRules rules == Allow
-        toString <$> value
+      (game, jvm)
+        & each %%~ \args -> traverse replaceInputs do
+          Argument {value, rules} <- args
+          guard $ processRules rules == Allow
+          toString <$> value
     processOldArgs args = do
       game <- T.splitOn " " args <&> toString & traverse replaceInputs
       natDir <- reThrow $ versionNativeDir vm
       pure (game, ["-cp", classpath, [i|-Djava.library.path=$natDir|]])
     replaceInputs =
       packed . [_regex|\$\{(?<prop>[^\}]+)\}|] %%~ \cap ->
-        cap & _capture @0 %%~ const case cap ^. _capture @"prop" of
-          "classpath" -> pure $ toText classpath
-          "natives_directory" -> fromPath $ versionNativeDir vm
-          "game_assets" -> fromPath $ assetObjectsDir assets
-          "assets_root" -> fromPath $ siehs @DirConfig #assetDir
-          "assets_index_name" -> pure $ vm ^. #assetIndex . #id
-          "game_directory" -> fromPath $ siehs @GameDir $ to unGameDir
-          "auth_player_name" -> siehs @MCAuth #username
-          "auth_uuid" -> siehs @MCAuth #uuid
-          ((`elem` ["auth_access_token", "auth_session"]) -> True) ->
-            siehs @MCAuth $ #accessToken . to unAccessToken
-          ((`elem` ["clientid", "auth_xuid"]) -> True) ->
-            pure "bogus" -- TODO implement new auth stuff...
-          ((`elem` ["version_name", "launcher_name"]) -> True) -> pure Meta.name
-          "launcher_version" -> pure Meta.version
-          "version_type" -> pure case vm ^. #versionType of
-            Release -> "release"
-            Snapshot -> "snapshot"
-            _ -> "unknown"
-          "user_type" -> pure "mojang" -- NOTE legacy?
-          "user_properties" -> pure "{}"
-          "library_directory" -> fromPath $ siehs @DirConfig #libraryDir
-          "classpath_separator" -> pure $ toText classpathSeparator
-          input -> throwString [i|invalid input '${input}' in argument|]
+        cap
+          & _capture @0 %%~ const case cap ^. _capture @"prop" of
+            "classpath" -> pure $ toText classpath
+            "natives_directory" -> fromPath $ versionNativeDir vm
+            "game_assets" -> fromPath $ assetObjectsDir assets
+            "assets_root" -> fromPath $ siehs @DirConfig #assetDir
+            "assets_index_name" -> pure $ vm ^. #assetIndex . #id
+            "game_directory" -> fromPath $ siehs @GameDir $ to unGameDir
+            "auth_player_name" -> siehs @MCAuth #username
+            "auth_uuid" -> siehs @MCAuth #uuid
+            ((`elem` ["auth_access_token", "auth_session"]) -> True) ->
+              siehs @MCAuth $ #accessToken . to unAccessToken
+            ((`elem` ["clientid", "auth_xuid"]) -> True) ->
+              pure "bogus" -- TODO implement new auth stuff...
+            ((`elem` ["version_name", "launcher_name"]) -> True) -> pure Meta.name
+            "launcher_version" -> pure Meta.version
+            "version_type" -> pure case vm ^. #versionType of
+              Release -> "release"
+              Snapshot -> "snapshot"
+              _ -> "unknown"
+            "user_type" -> pure "mojang" -- NOTE legacy?
+            "user_properties" -> pure "{}"
+            "library_directory" -> fromPath $ siehs @DirConfig #libraryDir
+            "classpath_separator" -> pure $ toText classpathSeparator
+            input -> throwString [i|invalid input '${input}' in argument|]
     fromPath = reThrow . fmap (toText . toFilePath)
 
 launch ::

@@ -181,7 +181,8 @@ withModpackMetadata mcSide afid cont = do
               serverId <-
                 file ^. #serverPackFileId & maybe (throwString "no server pack available") pure
               file <-
-                getAddonFilesByFileIds [serverId] <&> (^? each . folded)
+                getAddonFilesByFileIds [serverId]
+                  <&> (^? each . folded)
                   >>= maybe (throwString "server pack not found") pure
               when (file ^. #isServerPack /= Just True) $
                 throwString "expected a server pack from curse"
@@ -244,8 +245,8 @@ searchInstallModpack ModpackSearchInstallOptions {..} = do
     files <-
       getAddonFilesByAddonId (addon ^. #id)
         <&> sortOn (^. #fileDate . to Down) . filter \f ->
-          coerce (toList mcVersion) `isInfixOf` (f ^. #gameVersion)
-            && f ^. #releaseType <= maxReleaseType
+          (coerce (toList mcVersion) `isInfixOf` (f ^. #gameVersion))
+            && (f ^. #releaseType <= maxReleaseType)
     file <- case files & take (fromIntegral numFiles) & nonEmpty of
       Nothing -> logWarn "no modpack versions found" $> Nothing
       Just files ->

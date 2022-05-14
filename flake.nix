@@ -60,7 +60,7 @@
                 nixpkgs-fmt.enable = true;
                 ormolu = {
                   enable = true;
-                  entry = lib.mkForce "${ormolu}/bin/ormolu -e --mode inplace";
+                  entry = lib.mkForce "${ormolu}/bin/ormolu -i";
                 };
                 hlint.enable = true;
               };

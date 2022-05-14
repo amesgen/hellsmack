@@ -178,7 +178,9 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
     mcSideLike t = enumLike t \case MCClient -> "client"; MCServer -> "server"
     mcVersionLike t mods =
       fmap Vanilla.MCVersion . t $
-        OA.metavar "MINECRAFT-VERSION" <> mcVersionCompleter <> mods
+        OA.metavar "MINECRAFT-VERSION"
+          <> mcVersionCompleter
+          <> mods
           <> OA.help "Minecraft version, like 1.7.10 or 1.16-pre8"
     versionLatest, versionRecommended :: String
     specialVersions@(versionLatest, versionRecommended) = ("latest", "recommended")
@@ -196,7 +198,9 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
         Curse.Beta -> "beta"
         Curse.Alpha -> "alpha"
       do
-        OA.short 't' <> OA.long "max-release-type" <> OA.value Curse.Beta
+        OA.short 't'
+          <> OA.long "max-release-type"
+          <> OA.value Curse.Beta
           <> OA.help "most unstable release type to display"
     outDirOpt = dirPath OA.option do
       OA.short 'o' <> OA.long "out-dir" <> OA.help "Output directory" <> OA.value (Rel [reldir|.|])
@@ -223,7 +227,8 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
     cliParser = do
       dataDir <-
         optional $ dirPath OA.option do
-          OA.short 'd' <> OA.long "data-dir"
+          OA.short 'd'
+            <> OA.long "data-dir"
             <> OA.help "Directory for assets, libraries etc. (cached)"
       verbosity <- enumLike
         OA.option
@@ -244,7 +249,10 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
 
     launchOptions = do
       javaBin <- filePath OA.option do
-        OA.short 'j' <> OA.long "java" <> OA.showDefault <> OA.value (Rel [relfile|java|])
+        OA.short 'j'
+          <> OA.long "java"
+          <> OA.showDefault
+          <> OA.value (Rel [relfile|java|])
           <> OA.help "Java path"
       extraJvmArgs <-
         let a1 = many $ OA.strOption do
@@ -298,10 +306,16 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
                       "Search and install a modpack",
                       do
                         numModpacks <- OA.option (filterAuto (> 0)) do
-                          OA.short 'm' <> OA.long "num-modpacks" <> OA.value 8 <> OA.showDefault
+                          OA.short 'm'
+                            <> OA.long "num-modpacks"
+                            <> OA.value 8
+                            <> OA.showDefault
                             <> OA.help "number of modpacks to show"
                         numFiles <- OA.option (filterAuto (> 0)) do
-                          OA.short 'f' <> OA.long "num-files" <> OA.value 8 <> OA.showDefault
+                          OA.short 'f'
+                            <> OA.long "num-files"
+                            <> OA.value 8
+                            <> OA.showDefault
                             <> OA.help "number of concrete modpack versions to show"
                         maxReleaseType <- releaseTypeOpt
                         outDir <- outDirOpt
@@ -331,10 +345,16 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
                       "Search and install a mod",
                       do
                         numMods <- OA.option (filterAuto (> 0)) do
-                          OA.short 'm' <> OA.long "num-mods" <> OA.value 8 <> OA.showDefault
+                          OA.short 'm'
+                            <> OA.long "num-mods"
+                            <> OA.value 8
+                            <> OA.showDefault
                             <> OA.help "number of mods to show"
                         numFiles <- OA.option (filterAuto (> 0)) do
-                          OA.short 'f' <> OA.long "num-files" <> OA.value 8 <> OA.showDefault
+                          OA.short 'f'
+                            <> OA.long "num-files"
+                            <> OA.value 8
+                            <> OA.showDefault
                             <> OA.help "number of mod files to show"
                         maxReleaseType <- releaseTypeOpt
                         modLoader <- enumLike
@@ -343,12 +363,15 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
                             Curse.ForgeModLoader -> "forge"
                             Curse.FabricModLoader -> "fabric"
                           do
-                            OA.short 'l' <> OA.long "mod-loader" <> OA.value Curse.ForgeModLoader
+                            OA.short 'l'
+                              <> OA.long "mod-loader"
+                              <> OA.value Curse.ForgeModLoader
                               <> OA.help "mod loader to use"
                         outDir <- outDirOpt
                         installDependencies <-
                           not <$> OA.switch do
-                            OA.short 'd' <> OA.long "ignore-dependencies"
+                            OA.short 'd'
+                              <> OA.long "ignore-dependencies"
                               <> OA.help "whether to ignore mod dependencies"
                         mcVersion <- mcVersionLike OA.strArgument mempty
                         modName <- OA.strArgument do
@@ -366,7 +389,8 @@ getCLI = OA.execParser $ OA.info (OA.helper <*> ver <*> cliParser) OA.fullDesc
                         mcVersion <- optional $ mcVersionLike OA.strOption do
                           OA.short 'v' <> OA.long "mc-version"
                         inputs <- some $ OA.strArgument do
-                          OA.metavar "INPUTS..." <> fileAction
+                          OA.metavar "INPUTS..."
+                            <> fileAction
                             <> OA.help "Input files and/or directories"
                         pure $ ModUpdates Curse.ModUpdateOptions {..}
                     ),
