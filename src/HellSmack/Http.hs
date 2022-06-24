@@ -1,17 +1,23 @@
-{-# LANGUAGE CPP #-}
+module HellSmack.Http (newTLSManager) where
 
-module HellSmack.Http (newTLSManager, Manager) where
+import Network.HTTP.Client qualified as HTTP
+import Network.HTTP.Client.Rustls (rustlsManagerSettings)
+import Rustls qualified
+import UnliftIO.Exception
 
-import Network.HTTP.Client
-#if USE_HASKELL_TLS
-import Network.HTTP.Client.TLS
-#else
-import Network.HTTP.Client.OpenSSL
-#endif
-
-newTLSManager :: MonadIO m => m Manager
-#if USE_HASKELL_TLS
-newTLSManager = newTlsManager
-#else
-newTLSManager = liftIO $ withOpenSSL newOpenSSLManager
-#endif
+newTLSManager :: MonadIO m => m HTTP.Manager
+newTLSManager = liftIO do
+  roots <-
+    fmap (Rustls.ClientRootsInMemory . pure . Rustls.PEMCertificatesStrict) $
+      defaultCertFile `onException` envCertFile
+  clientConfig <- Rustls.buildClientConfig $ Rustls.defaultClientConfigBuilder roots
+  HTTP.newManager $ rustlsManagerSettings clientConfig
+  where
+    defaultCertFile = readFileBS "/etc/ssl/certs/ca-certificates.crt"
+    envCertFile =
+      lookupEnv envKey >>= \case
+        Just file | not (null file) -> readFileBS file
+        _ -> throwString [i|default SSL certs not found, please set $envKey|]
+      where
+        envKey :: String
+        envKey = "SSL_CERT_FILE"

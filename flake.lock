@@ -83,6 +83,28 @@
         "type": "github"
       }
     },
+    "fenix": {
+      "inputs": {
+        "nixpkgs": [
+          "nix-rustls",
+          "nixpkgs"
+        ],
+        "rust-analyzer-src": "rust-analyzer-src"
+      },
+      "locked": {
+        "lastModified": 1655706580,
+        "narHash": "sha256-7DshIT1Ya5W9NAW7UdnYCHsGmXfOXJZCEHbbB/cCX7g=",
+        "owner": "nix-community",
+        "repo": "fenix",
+        "rev": "d895003d8e03ac2fc8ffe2aa898299cbef1a7048",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "fenix",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "locked": {
         "lastModified": 1649676176,
@@ -239,6 +261,27 @@
         "type": "github"
       }
     },
+    "naersk": {
+      "inputs": {
+        "nixpkgs": [
+          "nix-rustls",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1655042882,
+        "narHash": "sha256-9BX8Fuez5YJlN7cdPO63InoyBy7dm3VlJkkmTt6fS1A=",
+        "owner": "nix-community",
+        "repo": "naersk",
+        "rev": "cddffb5aa211f50c4b8750adbec0bbbdfb26bb9f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "naersk",
+        "type": "github"
+      }
+    },
     "nix": {
       "inputs": {
         "lowdown-src": "lowdown-src",
@@ -257,6 +300,34 @@
         "owner": "NixOS",
         "ref": "2.6.0",
         "repo": "nix",
+        "type": "github"
+      }
+    },
+    "nix-rustls": {
+      "inputs": {
+        "fenix": "fenix",
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "naersk": "naersk",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rustls-ffi": "rustls-ffi"
+      },
+      "locked": {
+        "dir": "nix-rustls",
+        "lastModified": 1656101670,
+        "narHash": "sha256-y4emTKYao8ovbiqGlJu6piuObj8nj30Rew33EHgJgOY=",
+        "owner": "amesgen",
+        "repo": "hs-rustls",
+        "rev": "a20318f89e73c51b4082797f8b0a9a81f2b61abb",
+        "type": "github"
+      },
+      "original": {
+        "dir": "nix-rustls",
+        "owner": "amesgen",
+        "repo": "hs-rustls",
         "type": "github"
       }
     },
@@ -429,12 +500,47 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "haskellNix": "haskellNix",
+        "nix-rustls": "nix-rustls",
         "nixpkgs": [
           "haskellNix",
           "nixpkgs-unstable"
         ],
         "nur": "nur",
         "pre-commit-hooks": "pre-commit-hooks"
+      }
+    },
+    "rust-analyzer-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655654433,
+        "narHash": "sha256-auHQ0XPCiaTPSn+R3Yu4J7oZ5Zq/FS5/Da1ivvdYb/Y=",
+        "owner": "rust-lang",
+        "repo": "rust-analyzer",
+        "rev": "427061da19723f2206fe4dcb175c9c43b9a6193d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rust-lang",
+        "ref": "nightly",
+        "repo": "rust-analyzer",
+        "type": "github"
+      }
+    },
+    "rustls-ffi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1654915986,
+        "narHash": "sha256-9+AgNq8+YLSjQQxVZrdPkW1c082EhIDeAbFQfX0MOQA=",
+        "owner": "rustls",
+        "repo": "rustls-ffi",
+        "rev": "3e66fba148a8a97935b49c178ccfd1a71929bf2a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rustls",
+        "ref": "v0.9.1",
+        "repo": "rustls-ffi",
+        "type": "github"
       }
     },
     "stackage": {
