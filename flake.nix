@@ -9,14 +9,23 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     flake-utils.url = "github:numtide/flake-utils";
+    nix-rustls = {
+      url = "github:amesgen/hs-rustls?dir=nix-rustls";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
-  outputs = { self, nixpkgs, flake-utils, haskellNix, nur, pre-commit-hooks }:
+  outputs = { self, nixpkgs, flake-utils, haskellNix, nur, pre-commit-hooks, nix-rustls }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         pkgs = import nixpkgs {
           inherit system;
           inherit (haskellNix) config;
-          overlays = [ haskellNix.overlay nur.overlay ];
+          overlays = [
+            haskellNix.overlay
+            nur.overlay
+            nix-rustls.overlays.default
+          ];
         };
         inherit (pkgs) lib;
         hsPkgs = pkgs.haskell-nix.cabalProject {
@@ -53,20 +62,15 @@
               --hie-directory ${hellsmack.components.tests.tasty.hie}
           '';
           pre-commit-check =
-            let ormolu = pkgs.nur.repos.amesgen.ormolu; in
             pre-commit-hooks.lib.${system}.run {
               src = ./.;
               hooks = {
                 nixpkgs-fmt.enable = true;
-                ormolu = {
-                  enable = true;
-                  entry = lib.mkForce "${ormolu}/bin/ormolu -i";
-                };
+                ormolu.enable = true;
                 hlint.enable = true;
               };
               tools = {
-                inherit ormolu;
-                hlint = pkgs.nur.repos.amesgen.hlint;
+                inherit (pkgs.nur.repos.amesgen) ormolu hlint;
               };
             };
         };
@@ -74,7 +78,7 @@
           tools = { cabal = { }; };
           buildInputs = [ pkgs.nur.repos.amesgen.cabal-docspec ];
           withHoogle = false;
-          exactDeps = true;
+          exactDeps = false;
           inherit (self.checks.${system}.pre-commit-check) shellHook;
         };
 
